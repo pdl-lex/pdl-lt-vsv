@@ -1,0 +1,42 @@
+# Node / Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+*.log
+*.egg-info
+
+# Python / Backend
+backend/.venv/
+backend/__pycache__/
+backend/app/__pycache__/
+*.pyc
+
+# OS / Editor
+.DS_Store
+.idea/
+.vscode/
+
+# Quelldaten
+pipeline/source_data/
+
+# Specs for Implementation
+specs/
+CLAUDE.md
+start.txt
+.claude/
+
+
+# Python / Pipeline
+.venv/
+pipeline/__marimo__/
+
+# SGNS-Zwischenstaende (lemmatisierter Volltext, trainierte Modelle) - mehrere
+# hundert MB, rekonstruierbar aus source_data/
+pipeline/cache/
+
+# spaCy-Modell-Wheel (44 MB) — Bezugsweg in pipeline/README.md
+pipeline/assets/
+
+# LibreOffice-Sperrdateien
+.~lock.*#
+

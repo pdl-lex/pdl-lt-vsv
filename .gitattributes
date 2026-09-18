@@ -1,0 +1,12 @@
+# Der Arbeitsbaum wird über Nextcloud zwischen Linux und Windows geteilt — es
+# gibt physisch nur *eine* Datei für alle drei Rechner. Deshalb überall LF
+# erzwingen: sonst schreibt Git unter Windows CRLF hinein, der Sync trägt es
+# zurück, und die Datei gilt auf der anderen Maschine als komplett geändert.
+* text=auto eol=lf
+
+# Binärdateien nie anfassen
+*.pdf     binary
+*.odt     binary
+*.parquet binary
+*.png     binary
+*.whl     binary

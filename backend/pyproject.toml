@@ -1,0 +1,19 @@
+[project]
+name = "pdl-lt-vectorviz-backend"
+version = "0.1.0"
+description = "Serving-Layer für diachrone Vektor-Bundles (FastAPI)."
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+]
+
+[tool.uvicorn]
+# Start: uvicorn app.main:app --reload  (aus dem backend/-Verzeichnis)
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["app"]
