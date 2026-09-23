@@ -1,5 +1,5 @@
 [project]
-name = "pdl-lt-vectorviz-backend"
+name = "pdl-lt-vsv-backend"
 version = "0.1.0"
 description = "Serving-Layer für diachrone Vektor-Bundles (FastAPI)."
 requires-python = ">=3.11"

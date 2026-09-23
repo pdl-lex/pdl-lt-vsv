@@ -15,7 +15,7 @@
 import { Line } from "@react-three/drei";
 import type { IndexedBundle } from "../data/model";
 import { sampleTrackAt, toWorld } from "../data/model";
-import { neighborPointsAt } from "./neighborPoints";
+import { neighborPointsAt } from "./neighborPointsData";
 import { entityColor, type Mode } from "./theme";
 
 /** Eigene, kleine Grenze: Linien überlagern sich schneller zu Unlesbarkeit als

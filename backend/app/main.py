@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .bundles import router as bundles_router
 
 app = FastAPI(
-    title="pdl-lt-vectorviz API",
+    title="pdl-lt-vsv API",
     version="0.1.0",
     description="Serving-Layer für diachrone Vektor-Bundles.",
 )

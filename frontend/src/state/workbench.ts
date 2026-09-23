@@ -6,7 +6,7 @@
  */
 import { create } from "zustand";
 
-const PIN_KEY = "vectorviz.railPinned";
+const PIN_KEY = "vsv.railPinned";
 
 function initialPinned(): boolean {
   try {

@@ -1,6 +1,6 @@
 # Pipeline: Analyse-Kette an echten Daten erproben
 
-Testet die für `pdl-lt-vectorviz` vorgesehenen Analyse-Ketten einmal an echten,
+Testet die für `pdl-lt-vsv` vorgesehenen Analyse-Ketten einmal an echten,
 frei zugänglichen Daten, bevor die Workbench weitere Visualisierungs-Features
 bekommt. Hintergrund und Alternativen-Abwägung:
 `.claude/memory/corpus-decision.md` im Hauptrepo.

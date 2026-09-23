@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { validateBundle } from "../types/schema";
 import { indexBundle, pointForLabel, toWorld } from "../data/model";
-import { neighborPointsAt } from "./neighborPoints";
+import { neighborPointsAt } from "./neighborPointsData";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const dataDir = resolve(here, "../../../data/test");

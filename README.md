@@ -157,14 +157,13 @@ Facetten, Cluster) stammt aus dem geladenen Bundle.
 
 ```bash
 cd backend
-uv venv .venv
-uv pip install --python .venv/Scripts/python.exe -r requirements.txt   # Linux/macOS: .venv/bin/python
-.venv/Scripts/python.exe -m uvicorn app.main:app --reload --port 8077  # Linux/macOS: .venv/bin/python
+uv sync                                                # legt .venv an und installiert exakt nach uv.lock
+uv run uvicorn app.main:app --reload --port 8077
 ```
 
-Hinweis: Falls in der Shell eine `VIRTUAL_ENV`-Variable von einem anderen Projekt
-gesetzt ist, installiert `uv pip install` sonst dorthin statt in dieses `.venv` —
-daher der explizite `--python`-Pfad.
+`uv sync`/`uv run` verwenden immer das `.venv` im `backend/`-Ordner – auch wenn
+in der Shell ein anderes venv aktiv ist. Aktivieren ist nicht nötig.
+Abhängigkeiten ändern: `uv add <paket>` (aktualisiert `pyproject.toml` und `uv.lock`).
 
 - `GET /bundles` – Übersicht aller Bundles im `BUNDLES_DIR` (Default
   `backend/bundles/`, per Env überschreibbar).

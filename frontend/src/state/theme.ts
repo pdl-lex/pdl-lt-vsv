@@ -7,7 +7,7 @@
 import { create } from "zustand";
 import type { Mode } from "../viz/theme";
 
-const STORAGE_KEY = "vectorviz-theme";
+const STORAGE_KEY = "vsv-theme";
 
 function initialMode(): Mode {
   if (typeof window === "undefined") return "light";

@@ -11,7 +11,7 @@
  * mit dem Rang ausblassend) — die Zielwörter und Anker bleiben führend.
  */
 import { Html } from "@react-three/drei";
-import { neighborPointsAt } from "./neighborPoints";
+import { neighborPointsAt } from "./neighborPointsData";
 import type { IndexedBundle } from "../data/model";
 import { INK, type Mode } from "./theme";
 
