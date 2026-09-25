@@ -93,7 +93,23 @@ def _(mo):
 
 @app.cell
 def _():
-    suchwoerter = {"Bundeswehr", "Wehrpflicht", "Verteidigung", "Landesverteidigung", "Drohne", "Drohnen", "Hindukusch", "Rüstung", "Rüstungsindustrie", "Sicherheit", "Frieden", "Friedenssicherung"}
+    # suchwoerter = {"Bundeswehr", "Wehrpflicht", "Verteidigung", "Landesverteidigung", "Drohne", "Drohnen", "Hindukusch", "Rüstung", "Rüstungsindustrie", "Sicherheit", "Frieden", "Friedenssicherung"}
+
+    #suchwoerter = {"Bundeswehr", "Wehrpflicht", "Verteidigung", "Rüstung", "Sicherheit", "Frieden"}
+    return
+
+
+@app.cell
+def _():
+    # Der folgende Code liest die Suchwörter aus einer CSV-Liste ein. 
+
+    import csv
+    with open("source_data/suchwoerter-liste.csv", encoding="utf-16", newline="") as f2:
+        reader = csv.reader(f2)
+        next(reader, None)  # Kopfzeile überspringen – weglassen, falls keine vorhanden
+        suchwoerter = {row[0].strip() for row in reader if row and row[0].strip()}
+
+    print(suchwoerter)
     return (suchwoerter,)
 
 
@@ -127,7 +143,7 @@ def _(mo):
     return
 
 
-@app.cell(disabled=True)
+@app.cell
 def _(korpus, mo, normalisiere, pl, suchwoerter):
     def kwic_treffer(rede_id, text, fenster=40):
         woerter = text.split()
@@ -195,7 +211,7 @@ def _(nlp, suchwoerter):
     return (zielwort_lemmata,)
 
 
-@app.cell(disabled=True)
+@app.cell
 def _(kwic_liste, mo, nlp, pl, zielwort_lemmata):
     # Standardmäßig deaktiviert aufgrund der benötigten Laufzeit. Stattdessen wird das Ergebnis in der folgenden Zelle aus einer gespeicherten Version geladen.
 
@@ -1727,22 +1743,81 @@ def _(mo):
     ## Nearest Neighbours
     Anker und Nachbarn erfüllen verschiedene Zwecke. Anker sind dauerhaft beschriftete, sinntragende Wörter, die als Punkte im 3D-Raum angezeigt werden. Deswegen sind die Anker umfangreich gefiltert und händisch kuratiert.
 
-    Für Nachbarn gibt es zunächst nur das Kriterium der Mindestbelegung, ansonsten sind es sind die im Vektorraum nächsten Begriffe.
+    Auch die Nachbarn werden gefiltert, weil sonst zuviele irrelevante Wörter in den Listen auftauchen: Rednernamen, POS, Mindestbelegung
     """)
     return
 
 
 @app.cell
-def _(anker_erlaubt, anker_vektoren, np, spalten_tabelle, vektoren):
-    neighbor_kandidaten = spalten_tabelle.join(
-        anker_erlaubt, on="kontext_lemma", how="inner"
+def _(korpus, pl):
+    # Namen der im Korpus sprechenden Personen. Präziser als NER und ohne
+    # erneute NLP-Berechnung, weil es eine exakte Liste realer Personen ist. Erfasst jedoch keine Namen, die nicht Redner sind.
+    redner_namen = (
+        pl.concat([
+            korpus["redner_vorname"],
+            korpus["redner_nachname"],
+        ])
+        .drop_nulls()
+        .unique()
+    )
+    return (redner_namen,)
+
+
+@app.cell
+def _(pl, svd_input, zeilen_tabelle):
+    # Eigene Belegungs-Tabelle für Nachbarn, inhaltlich identisch zu
+    # anker_belegung, aber bewusst getrennt - der Schwellwert lässt sich so
+    # unabhängig von dem für Anker verstellen.
+    neighbor_belegung = (
+        svd_input
+        .group_by("kontext_lemma")
+        .agg([
+            pl.col("zeile_i").n_unique().alias("zellen"),
+            pl.col("beobachtet").sum().alias("haeufigkeit"),
+        ])
+    )
+
+    # Start: gleicher Wert wie bei Ankern. Hochsetzen, falls nach POS- und
+    # Namensfilter immer noch zu viele seltene/instabile Nachbarn durchkommen.
+    neighbor_mindestzellen = max(10, round(len(zeilen_tabelle) * 0.02))
+
+    neighbor_erlaubt = neighbor_belegung.filter(
+        pl.col("zellen") >= neighbor_mindestzellen
+    )
+
+    print(f"Nachbar-Kandidaten (Belegung): {len(neighbor_erlaubt):,} von "
+          f"{len(neighbor_belegung):,} (Mindestbelegung {neighbor_mindestzellen} "
+          f"von {len(zeilen_tabelle)} Zeilen)")
+    return (neighbor_erlaubt,)
+
+
+@app.cell
+def _(
+    anker_pos_je_lemma,
+    anker_vektoren,
+    neighbor_erlaubt,
+    np,
+    pl,
+    redner_namen,
+    spalten_tabelle,
+    vektoren,
+):
+    neighbor_pos_erlaubt = ["NOUN", "PROPN", "ADJ", "VERB"]
+
+    neighbor_kandidaten = (
+        spalten_tabelle
+        .join(neighbor_erlaubt, on="kontext_lemma", how="inner")
+        .join(anker_pos_je_lemma, on="kontext_lemma", how="inner")
+        .filter(pl.col("pos").is_in(neighbor_pos_erlaubt))
+        .filter(
+                ~((pl.col("pos") == "PROPN") & pl.col("kontext_lemma").is_in(redner_namen.implode()))
+        )
     )
 
     neighbor_kandidaten_vektoren = anker_vektoren[
         neighbor_kandidaten["spalte_j"].to_numpy()
     ]
 
-    # Gleiche Berechnungsschritte wie bei den Ankern, nur aus dem breiteren Pool
     neighbor_zeilen_normiert = vektoren / np.linalg.norm(
         vektoren, axis=1, keepdims=True
     )
@@ -1752,7 +1827,7 @@ def _(anker_erlaubt, anker_vektoren, np, spalten_tabelle, vektoren):
     neighbor_kosinus_alle = neighbor_zeilen_normiert @ neighbor_kandidaten_normiert.T
 
     print(f"Nachbar-Kandidaten: {len(neighbor_kandidaten):,} von "
-          f"{len(spalten_tabelle):,} (Mindestbelegung, kein POS-Filter)")
+          f"{len(spalten_tabelle):,} (eigene Mindestbelegung, POS-Filter, Rednernamen)")
     print("Kosinus-Tabelle:", neighbor_kosinus_alle.shape,
           f"({neighbor_kosinus_alle.nbytes / 1e6:.0f} MB)")
     return neighbor_kandidaten, neighbor_kosinus_alle
@@ -1867,6 +1942,82 @@ def _(
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
+    ### Export als CSV
+    Für Auswertungen außerhalb des VSV-Tools wird das neighbors-Dict zusätzlich
+    als flache CSV exportiert (neighbors_full, eine Zeile je Nennung) sowie als
+    aggregierte CSV (neighbors_aggregated, eine Zeile je eindeutigem Nachbarn,
+    mit Median-Score über alle Zielwörter/Zeitscheiben hinweg). Die Zielwörter
+    selbst (entity_id) tauchen in neighbors_aggregated bewusst nicht mehr auf.
+
+    Konkret wird diese Liste verwendet, um die finale Zielwort-Liste zu generieren.
+    """)
+    return
+
+
+@app.cell
+def _(neighbors, pl):
+    # neighbors_full: jede Nachbar-Nennung einzeln, mit Zielwort- (entity_id)
+    # und Zeitscheiben-Bezug (time_slice_id).
+    neighbors_full = pl.DataFrame([
+        {
+            "entity_id": entity_id,
+            "time_slice_id": time_slice_id,
+            "label": eintrag["label"],
+            "group": eintrag["group"],
+            "score": eintrag["score"],
+        }
+        for entity_id, je_entity in neighbors.items()
+        for time_slice_id, eintraege in je_entity.items()
+        for eintrag in eintraege
+    ])
+
+    neighbors_full.write_csv("output/neighbors_full.csv")
+
+    print(f"neighbors_full.csv: {len(neighbors_full):,} Zeilen")
+    return (neighbors_full,)
+
+
+@app.cell
+def _(neighbors_full, pl):
+    # neighbors_aggregated: ein Nachbar (label) taucht nur noch einmal auf,
+    # unabhängig davon, zu wie vielen Zielwörtern/Zeitscheiben er gehörte.
+    # score_median fasst alle Einzel-Scores dieses Nachbarn zusammen.
+    neighbors_aggregated = (
+        neighbors_full
+        .group_by(["label", "group"])
+        .agg([
+            pl.col("score").median().round(4).alias("score_median"),
+            pl.len().alias("n_vorkommen"),
+        ])
+        .sort("score_median", descending=True)
+    )
+
+    neighbors_aggregated.write_csv("output/neighbors_aggregated.csv")
+
+    print(f"neighbors_aggregated.csv: {len(neighbors_aggregated):,} eindeutige Nachbarn")
+    return (neighbors_aggregated,)
+
+
+@app.cell
+def _(neighbors_aggregated, pl):
+    # Nachbarn, die insgesamt nur ein- oder zweimal in allen Top-150-Listen
+    # auftauchen, beruhen oft auf einer einzelnen, instabilen Kosinus-Messung.
+    neighbor_min_vorkommen = 3
+
+    neighbors_aggregated_stabil = neighbors_aggregated.filter(
+        pl.col("n_vorkommen") >= neighbor_min_vorkommen
+    )
+
+    neighbors_aggregated_stabil.write_csv("output/neighbors_aggregated_stabil.csv")
+
+    print(f"neighbors_aggregated_stabil.csv: {len(neighbors_aggregated_stabil):,} von "
+          f"{len(neighbors_aggregated):,} Nachbarn (Mindestvorkommen {neighbor_min_vorkommen})")
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
     ### Ähnlichkeitsprüfung auf Rang k
     Eine Liste von k (=150) nächsten Nachbarn garantiert nicht, dass sich die Einträge (am Ende der Liste) wirklich ähnlich sind. Deswegen wird nun an verschiedenen Stichproben geprüft, wie der Kosinus ausfällt. Es sollte sich idealerweise/normalerweise eine abfallende Kurve zeigen, die nicht bei 0 endet, sondern deutlich darüber (über dem Grundpegel).
 
@@ -1897,8 +2048,6 @@ def _(nb_lang, nb_scores, neighbor_kosinus_alle, neighbors_k, np):
 
     print(f"Verschiedene Nachbar-Lemmata insgesamt: "
           f"{nb_lang['lemma'].n_unique():,}")
-
-
     return
 
 
