@@ -73,7 +73,7 @@ export interface NeighborFlow {
  */
 export function neighborGroups(idx: IndexedBundle): string[] {
   const extra = new Set<string>();
-  for (const perSlice of Object.values(idx.bundle.neighbors)) {
+  for (const perSlice of Object.values(idx.neighbors)) {
     for (const list of Object.values(perSlice)) {
       for (const n of list) {
         if (n.group && !idx.clusters.includes(n.group)) extra.add(n.group);
@@ -99,7 +99,16 @@ function splitRuns(points: FlowPoint[]): FlowPoint[][] {
   return runs;
 }
 
-export function buildNeighborFlow(idx: IndexedBundle, entityId: string): NeighborFlow | null {
+/**
+ * @param limit Höchstens so viele Ränge je Zeitscheibe (der k-Regler). Ohne
+ *   Grenze nähme der Fluss die volle Listenlänge als Rangachse — bei Abfragen
+ *   mit k = 1000 also 1000 Ränge.
+ */
+export function buildNeighborFlow(
+  idx: IndexedBundle,
+  entityId: string,
+  limit: number = Infinity,
+): NeighborFlow | null {
   const track = idx.tracks.find((t) => t.entity.id === entityId);
   if (!track) return null;
 
@@ -115,7 +124,7 @@ export function buildNeighborFlow(idx: IndexedBundle, entityId: string): Neighbo
 
   for (let i = 0; i < n; i++) {
     if (entityFreqAt(idx, entityId, i) <= 0) continue; // Regel 2
-    const list = neighborsAt(idx, entityId, i);
+    const list = neighborsAt(idx, entityId, i).slice(0, Math.max(0, limit));
     if (list.length === 0) continue;
     slicePresent[i] = true;
     k = Math.max(k, list.length);

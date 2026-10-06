@@ -19,7 +19,7 @@
  */
 import { z } from "zod";
 
-/** Vorprojizierte 3D-Koordinate (joint PCA). Genau drei Zahlen → Tupel-Typ. */
+/** Vorprojizierte 3D-Koordinate (gemeinsame PCA). Genau drei Zahlen → Tupel-Typ. */
 export const coords3dSchema = z.tuple([z.number(), z.number(), z.number()]);
 
 /** Voller Vektor im gemeinsamen Raum – beliebige, aber bundleweit gleiche Dim. */
@@ -136,8 +136,61 @@ export const neighborSchema = z
     label: z.string(),
     score: z.number().optional(),
     group: z.string().optional(),
+    // Lemma des Nachbarn; Anzeige-`label` kann davon abweichen (Anker).
+    // Nur aus Abfragen, Grundlage für „ausblenden“ (Stoppwörter gehen aufs Lemma).
+    lemma: z.string().optional(),
   })
   .passthrough();
+
+/**
+ * `meta.neighbor_space` (SCHEMA.md, Format 1): Suchraum für Nachbarabfragen.
+ *
+ * Bewusst NICHT Teil von `metaSchema`: ein fehlerhafter Suchraum darf das
+ * Bundle nicht unladbar machen — dann gibt es eben nur die vorberechneten
+ * `neighbors`. Ausgewertet wird er getrennt über `parseNeighborSpaceMeta()`.
+ */
+export const neighborSpaceFilterSchema = z
+  .object({
+    column: z.string(),
+    type: z.enum(["categorical", "minimum", "exclude_if_true"]),
+    label: z.string(),
+    description: z.string().optional(),
+    default: z.unknown().optional(),
+  })
+  .passthrough();
+
+export const neighborSpaceMetaSchema = z
+  .object({
+    format: z.literal(1),
+    vectors: z.string(),
+    index: z.string(),
+    neighbor_kind: z.string().optional(),
+    similarity: z.literal("cosine"),
+    filters: z.array(neighborSpaceFilterSchema),
+    stopwords: z.array(z.string()),
+  })
+  .passthrough();
+
+export type NeighborSpaceMeta = z.infer<typeof neighborSpaceMetaSchema>;
+
+/** `meta.neighbor_space` prüfen: das Objekt, oder ein lesbarer Grund, warum nicht. */
+export function parseNeighborSpaceMeta(
+  meta: Record<string, unknown>,
+): { ok: true; value: NeighborSpaceMeta } | { ok: false; reason: string } {
+  const raw = meta.neighbor_space;
+  if (raw === undefined || raw === null) {
+    return { ok: false, reason: "Das Bundle hat keinen Suchraum (meta.neighbor_space)." };
+  }
+  const result = neighborSpaceMetaSchema.safeParse(raw);
+  if (!result.success) {
+    const first = result.error.issues[0];
+    return {
+      ok: false,
+      reason: `Suchraum nicht nutzbar (${first.path.join(".") || "neighbor_space"}: ${first.message}).`,
+    };
+  }
+  return { ok: true, value: result.data };
+}
 
 /** neighbors: { [entity_id]: { [slice_id]: Neighbor[] } } */
 export const neighborsSchema = z.record(
@@ -169,6 +222,7 @@ export type Anchor = z.infer<typeof anchorSchema>;
 export type VocabPoint = z.infer<typeof vocabPointSchema>;
 export type Cell = z.infer<typeof cellSchema>;
 export type Neighbor = z.infer<typeof neighborSchema>;
+export type Neighbors = z.infer<typeof neighborsSchema>;
 export type Bundle = z.infer<typeof bundleSchema>;
 
 /** Fehler mit menschenlesbarer Zusammenfassung der ersten Schema-Verstöße. */

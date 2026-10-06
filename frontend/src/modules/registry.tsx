@@ -18,6 +18,7 @@ import { MatrizenConfig, MatrizenMain } from "./matrizen";
 import { DriftConfig, DriftMain } from "./drift";
 import { PaareConfig, PaareMain } from "./paare";
 import { NachbarnConfig, NachbarnMain } from "./nachbarn";
+import { NachbarfilterConfig, NachbarfilterMain } from "./nachbarfilter";
 
 export interface ModuleDef {
   id: string;
@@ -46,6 +47,18 @@ export const MODULES: ModuleDef[] = [
       "Bundle laden und prüfen: Projektion, Zeitraum, Facetten und die Belegung je Zielwort.",
     Config: DatenConfig,
     Main: DatenMain,
+  },
+  {
+    id: "nachbarfilter",
+    label: "Nachbar-Filter",
+    group: "Daten",
+    icon: "filter",
+    eyebrow: "Daten",
+    title: "Nachbar-Filter",
+    description:
+      "Welche Wörter als Nachbarn infrage kommen — Wortart, Mindestbelegung, Stoppwörter. Gilt in allen Modulen.",
+    Config: NachbarfilterConfig,
+    Main: NachbarfilterMain,
   },
   {
     id: "wortraum",

@@ -16,6 +16,7 @@ import { TimeSlider } from "../ui/TimeSlider";
 import { AnchorClusters, ConfidenceKey, TargetWords } from "../ui/Legend";
 import { NeighborKControl } from "../ui/NeighborKControl";
 import { NeighborPanel } from "../ui/NeighborPanel";
+import { NeighborFilterNote } from "../ui/NeighborFilterNote";
 import { VolumeNote } from "../ui/VolumeNote";
 import { ProjectionNote } from "../ui/ProjectionNote";
 import { ModeSwitch } from "../ui/ModeSwitch";
@@ -56,6 +57,7 @@ export function WortraumConfig() {
       {viewMode === "aggregat" && indexed.maxNeighborK > 0 && (
         <Section title="Nachbarn" icon="orbit" defaultOpen={false}>
           <NeighborKControl />
+          <NeighborFilterNote />
         </Section>
       )}
 

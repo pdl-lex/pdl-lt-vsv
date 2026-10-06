@@ -640,3 +640,50 @@ button, input, select, textarea { font-family: inherit; }
   .app { grid-template-columns: var(--lt-rail-w) 288px 1fr; }
   .hdr__crumb { max-width: 22vw; }
 }
+
+/* ── Nachbar-Filter ───────────────────────────────────────────────────────── */
+.nfnote {
+  display: inline-flex; align-items: flex-start; gap: 5px; max-width: 100%;
+  font: inherit; font-size: 11px; line-height: 1.4; text-align: left;
+  background: none; border: none; padding: 0; cursor: pointer; color: var(--lt-fg-3);
+}
+.nfnote svg { flex: none; margin-top: 2px; }
+.nfnote:hover { color: var(--lt-primary); }
+.nfnote--warn { color: var(--lt-warn); }
+.nn .nfnote { margin-bottom: 8px; }
+.pane__desc + .nfnote { margin-top: 6px; }
+
+.nf__head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.nf__head .card__title { margin-bottom: 6px; }
+.nf__desc { margin-bottom: 10px; color: var(--lt-fg-3); }
+.nf__row { display: flex; align-items: center; gap: 8px; }
+.nf__btns { display: flex; flex-wrap: wrap; gap: 6px 10px; margin-top: 10px; }
+.nf__check { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--lt-fg-2); cursor: pointer; }
+.nf__ge { color: var(--lt-fg-3); }
+.nf__num { width: 7em; }
+.nf__count { margin-left: 2px; font-size: 10.5px; color: var(--lt-fg-3); }
+.nf__stopbox {
+  display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px;
+  max-height: 260px; overflow-y: auto; padding: 2px 0;
+}
+.nf__chip--unknown { color: var(--lt-fg-4); border-style: dashed; }
+.nf-btn {
+  display: inline-flex; align-items: center; gap: 5px; font: inherit; font-size: 12px;
+  padding: 4px 9px; border-radius: var(--lt-r-sm); cursor: pointer;
+  border: 1px solid var(--lt-line-1); background: var(--lt-bg-1); color: var(--lt-fg-2);
+}
+.nf-btn:hover:not(:disabled) { border-color: var(--lt-primary-line); color: var(--lt-fg-1); }
+.nf-btn:disabled { opacity: 0.5; cursor: default; }
+.nf-link {
+  font: inherit; font-size: 11.5px; background: none; border: none; padding: 0;
+  color: var(--lt-primary); cursor: pointer;
+}
+.nf-link:disabled { color: var(--lt-fg-4); cursor: default; }
+
+.nn__hide {
+  flex: none; font: inherit; font-size: 13px; line-height: 1; padding: 0 2px;
+  background: none; border: none; cursor: pointer; color: var(--lt-fg-4);
+  visibility: hidden;
+}
+.nn__item:hover .nn__hide, .nn__hide:focus-visible { visibility: visible; }
+.nn__hide:hover { color: var(--lt-warn); }

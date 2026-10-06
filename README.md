@@ -5,8 +5,10 @@ ist das DNB-Zeitenwende-Projekt (Wandel deutschen Militär-/Verteidigungsvokabul
 2010–2025); das Tool ist aber **domänenunabhängig** und rendert jeden Datensatz im
 vereinbarten Bundle-Schema (siehe [`data/test/SCHEMA.md`](data/test/SCHEMA.md)).
 
-Wie die Daten aussehen müssen und was jede Visualisierung daraus rechnet:
-[`Readme Datenmodell.md`](pipeline/Readme%20Datenmodell.md).
+Wie die Daten aussehen müssen: [`data/test/SCHEMA.md`](data/test/SCHEMA.md),
+einschließlich des Suchraums für Nachbarabfragen (`meta.neighbor_space`). Die
+Datengenerierung liegt im separaten Repo `pdl-lt-vsv-pipeline`; dort beschreibt
+`internal/Readme Datenmodell.md`, was jede Visualisierung aus den Daten rechnet.
 
 ## Aktueller Stand
 
@@ -17,6 +19,7 @@ Modulwechsel verliert weder Auswahl noch Zeitposition.
 | Modul | Was es zeigt |
 |---|---|
 | **Datenquelle** | Bundle laden und prüfen: Projektion, Zeitraum, Facetten, Belegung je Zielwort |
+| **Nachbar-Filter** | Welche Wörter als Nachbarn infrage kommen (Wortart, Mindestbelegung, Stoppwörter …); gilt in allen Modulen |
 | **Wortraum (3D)** | Trajektorien durch den gemeinsamen Vektorraum, Zeit als Achse |
 | **Ähnlichkeitsmatrizen** | T×T-Selbstähnlichkeit je Zielwort (Kiyama) |
 | **Drift-Kurven** | Abstand zu einem Bezugszeitpunkt über die Zeit (Hamilton) |
@@ -41,10 +44,12 @@ Modulwechsel verliert weder Auswahl noch Zeitposition.
 - **Trajektorien** je Zielwort mit Lücken-Behandlung (leere `freq==0`-Zellen
   unterbrechen den Pfad statt Bewegung zu erfinden).
 - **Nearest-Neighbour-Overlay** + Panel (score/group) beim Scrubben, Länge per
-  Regler einstellbar (Standard 8, bis zur Listenlänge des Bundles – die echten
-  Bundestags-Bundles liefern bis zu 150). Positionen kommen aus `anchors` und,
-  seit dem Umbau vom 2026-09-11, aus `vocab_points`: gefiltert wird im vollen
-  Vektorraum beim Lieferanten, der Regler schneidet nur die Anzeigeliste ab.
+  Regler einstellbar (Standard 8, bis zur Listenlänge: 1000 bei Abfragen über
+  das Backend, sonst die Länge der vorberechneten Listen im Bundle). Ausgewählt
+  wird im vollen Vektorraum, der Regler schneidet nur die Anzeigeliste ab.
+  Positionen kommen aus `anchors`, aus der Kandidatentabelle des Suchraums bzw.
+  aus `vocab_points`. Im Panel blendet „×“ einen Nachbarn aus (als Stoppwort).
+  Eine Zeile über der Liste sagt, welche Filter gelten.
 - **Auflösungs-Gating**: liefert ein Bundle die optionalen Gütemaße `kontrast`/
   `generik` je Zelle (bislang das SGNS-Bundle), dämpft die Szene Punkte, Labels
   und Linien unterhalb gemessener Schwellen, statt sie zu verstecken – ohne
@@ -60,6 +65,28 @@ Modulwechsel verliert weder Auswahl noch Zeitposition.
   - **Facettiert** – eine Linie je Facettenwert (aus `records`), Farbe trägt die
     Facette → Quellenunterschiede werden sichtbar.
   - **Streuung** – facettenaufgelöste Punktwolke je Wort (Unsicherheit/Konsens).
+
+### Nachbar-Filter
+
+Eine Seite, auf der festgelegt wird, welche Wörter als Nachbarn infrage kommen.
+Die Filter wirken in allen Modulen: Nachbarn-Panel, Punkte im Wortraum,
+Nachbarschafts-Fluss.
+
+- **Gerechnet wird im Backend**, im vollen Vektorraum und nach rohem Kosinus,
+  nur unter den Kandidaten, die alle Filter passieren. Voraussetzung ist ein
+  Bundle mit Suchraum (`meta.neighbor_space` plus `.vectors.npy` und
+  `.index.parquet` neben dem JSON). Die Regeln stehen in `SCHEMA.md`.
+- **Welche Filter es gibt, bestimmt das Bundle**; die Bedienelemente entstehen
+  aus der Deklaration: Auswahl mit Anzahl je Wert (z. B. Wortart), Untergrenze
+  (z. B. Mindestbelegung), Ausblenden-Schalter (z. B. Rednernamen). Je Filter
+  lässt sich die Voreinstellung wiederherstellen.
+- **Stoppwörter:** Das Bundle liefert eine Liste mit; gearbeitet wird mit einer
+  Kopie (ergänzen, entfernen, als Textdatei herunter- und hochladen, auf die
+  mitgelieferte Liste zurücksetzen). Abgleich über das Lemma. Die geänderte
+  Liste bleibt je Bundle im Browser gespeichert.
+- **Rückfall:** Ohne Suchraum, bei einer aus einer Datei geöffneten Bundle-Datei
+  oder wenn das Backend nicht antwortet, gelten die vorberechneten `neighbors`
+  des Bundles, mit Hinweis. Sie entsprechen genau den Voreinstellungen.
 
 ### Ähnlichkeitsmatrizen (Kiyama)
 
@@ -110,9 +137,12 @@ dasselbe „aktive Wort" wie im Wortraum.
 Bump-Diagramm der Top-k-Nachbarn: x = Zeit, y = Rang, eine Linie je Nachbarwort.
 Die Ansicht, die eine gemessene Verschiebung **in Wörter übersetzt**.
 
-- **Farbe steht für die Nachbar-Gruppe**, nicht für das einzelne Wort — bei ~20
-  Nachbarn trennt keine Palette 20 Serien, und der Befund ist ohnehin, welche
-  *Art* Umfeld welche ablöst. Die Wortidentität trägt die Direktbeschriftung.
+- **Zahl der Rangplätze = Regler „Nachbarn“** (derselbe wie im Wortraum,
+  Standard 8); die Filter der Seite „Nachbar-Filter“ gelten auch hier.
+- **Farbe steht für die Nachbar-Gruppe**, nicht für das einzelne Wort — bei
+  vielen Nachbarn trennt keine Palette alle Serien, und der Befund ist ohnehin,
+  welche *Art* Umfeld welche ablöst. Die Wortidentität trägt die
+  Direktbeschriftung.
 - **Lücke = raus aus den Top-k**; kehrt ein Nachbar zurück, beginnt ein neues
   Segment. Zeitscheiben ohne Beleg sind schraffiert — auch dann, wenn das Bundle
   dort Nachbarn mitliefert.
@@ -127,12 +157,15 @@ Re-Projektion, facettenaufgelöste Ähnlichkeit, CSV-Export, UMAP/Sentiment.
 ## Architektur
 
 ```
-backend/               FastAPI-Serving-Layer: listet + liefert Bundles
+backend/app/           FastAPI: bundles.py (listet + liefert Bundles) ·
+                       neighbors.py (Nachbarabfragen über den Suchraum)
+backend/tests/         pytest: Regeln aus SCHEMA.md + Konformitätstest
 frontend/src/
   modules/registry.tsx Modul-Registry — verbindet Rail, Konfigurator, Hauptbereich
-  modules/*.tsx        je ein Werkzeug (daten, wortraum, matrizen, drift,
-                       paare, nachbarn)
+  modules/*.tsx        je ein Werkzeug (daten, nachbarfilter, wortraum, matrizen,
+                       drift, paare, nachbarn)
   state/               store.ts (Bundle/Zeit/Auswahl, global) · workbench.ts (Navigation)
+                       · neighborFilters.ts (Nachbar-Filter, Abfrage beim Backend)
                        · je Modul ein kleiner Options-Store
   viz/                 3D-Szene + Farbtokens; Rechenschicht: similarity.ts
                        (Kosinus/Kiyama) → series.ts (Drift, Paare) ·
@@ -168,6 +201,16 @@ Abhängigkeiten ändern: `uv add <paket>` (aktualisiert `pyproject.toml` und `uv
 - `GET /bundles` – Übersicht aller Bundles im `BUNDLES_DIR` (Default
   `backend/bundles/`, per Env überschreibbar).
 - `GET /bundles/{id}` – Roh-JSON eines Bundles.
+- `GET /bundles/{id}/neighbor-space` – Suchraum eines Bundles: Filter mit
+  vorkommenden Werten, Stoppwörter, Kandidatentabelle (404 ohne Suchraum).
+- `POST /bundles/{id}/neighbors` – Nachbarn aller Zielwörter und Zeitscheiben
+  für `{k, filters, stopwords}`; `k` höchstens 1000 (Env `NEIGHBORS_K_MAX`).
+  Antworten werden gzip-komprimiert.
+
+Tests: `uv run pytest`. Neben den Regeltests an einem synthetischen Bundle
+prüft ein Konformitätstest jedes Bundle in `BUNDLES_DIR` mit Suchraum: Eine
+Abfrage mit den Voreinstellungen muss genau die mitgelieferten `neighbors`
+ergeben (SCHEMA.md, „Konsistenz mit `neighbors`“).
 
 **Frontend** (Vite-Dev-Server auf 5173, proxyt `/bundles` ans Backend):
 
@@ -180,13 +223,16 @@ npm run dev        # http://localhost:5173
 Zeigt das Backend auf einem anderen Port/Host, per Env setzen:
 `VITE_API_TARGET=http://localhost:8077 npm run dev`.
 
-Weitere Skripte: `npm run build`, `npm run typecheck`, `npm test` (validiert das
-Schema gegen beide Demo-Bundles).
+Weitere Skripte: `npm run build`, `npm run typecheck`, `npm test` (vitest:
+Schema gegen die Demo-Bundles, Rechenschicht, Nachbar-Filter).
 
 ## Eigene Datensätze anzeigen
 
 - **Ad-hoc:** JSON per „Datei öffnen…" wählen oder in den Header ziehen.
 - **Dauerhaft:** JSON nach `backend/bundles/` legen → erscheint im Picker.
+  Für Nachbar-Filter die Suchraum-Dateien aus `meta.neighbor_space`
+  (`.vectors.npy`, `.index.parquet`) daneben legen; danach `uv run pytest`,
+  der Konformitätstest prüft das neue Bundle mit.
 
 Ungültige Bundles werden mit lesbarer Fehlermeldung abgewiesen (Schema- und
 JSON-Syntaxfehler).

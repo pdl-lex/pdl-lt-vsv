@@ -6,7 +6,8 @@
  * Auto-Framing berechnen, Konfidenz-Normierung (freq-Maxima) und Lookups für
  * Nachbarschaften/Anker. Die 3D-Komponenten arbeiten nur noch mit `IndexedBundle`.
  */
-import type { Anchor, Bundle, Cell, Coords3d, Entity, Neighbor, TimeSlice, VocabPoint } from "../types/schema";
+import type { Anchor, Bundle, Cell, Coords3d, Entity, Neighbor, Neighbors, TimeSlice, VocabPoint } from "../types/schema";
+import type { NeighborCandidates, NeighborQueryResult } from "./apiClient";
 
 /** Ein Aggregat-Sample einer Entity zu einer Zeitscheibe. */
 export interface TrackSample {
@@ -76,9 +77,16 @@ export interface IndexedBundle {
    * `marode`), gewinnt der beschriftete Anker. Die Pipeline schließt solche
    * Kollisionen inzwischen aus; die Regel hier hält auch ältere Bundles heil. */
   pointByLabel: Map<string, Coords3d>;
-  /** Längste vorberechnete Nachbarliste im Bundle = Obergrenze des k-Reglers.
-   * Ältere Bundles liefern 8, neue 150 — der Regler richtet sich danach,
-   * statt eine Zahl zu raten. */
+  /** Die Nachbarlisten, die alle Ansichten zeigen (über `neighborsAt`).
+   * Anfangs die vorberechneten aus dem Bundle; nach einer Nachbarabfrage mit
+   * Filtern deren Ergebnis (`withQueriedNeighbors`). Das Bundle selbst bleibt
+   * unverändert — es ist der Rückfall (`withBundleNeighbors`). */
+  neighbors: Neighbors;
+  /** Woher `neighbors` stammt: vorberechnet im Bundle oder aus einer Abfrage. */
+  neighborSource: "bundle" | "query";
+  /** Längste Nachbarliste in `neighbors` = Obergrenze des k-Reglers.
+   * Ältere Bundles liefern 8, neue 150, Abfragen bis 1000 — der Regler richtet
+   * sich danach, statt eine Zahl zu raten. */
   maxNeighborK: number;
 
   clusters: string[];
@@ -270,12 +278,6 @@ export function indexBundle(bundle: Bundle): IndexedBundle {
     if (!pointByLabel.has(lower)) pointByLabel.set(lower, v.coords_3d as Coords3d);
   }
 
-  let maxNeighborK = 0;
-  for (const perSlice of Object.values(bundle.neighbors)) {
-    for (const list of Object.values(perSlice)) {
-      if (list.length > maxNeighborK) maxNeighborK = list.length;
-    }
-  }
 
   // Framing über alle sichtbaren Punkte (Anker + Aggregate + Records).
   const allCoords: Coords3d[] = [
@@ -302,7 +304,9 @@ export function indexBundle(bundle: Bundle): IndexedBundle {
     anchorByLabel,
     vocabPoints: bundle.vocab_points,
     pointByLabel,
-    maxNeighborK,
+    neighbors: bundle.neighbors,
+    neighborSource: "bundle",
+    maxNeighborK: longestList(bundle.neighbors),
     clusters,
     center,
     scale,
@@ -373,7 +377,78 @@ export function neighborsAt(
   if (!entityId) return [];
   const sliceId = idx.sortedSlices[sliceIndex]?.id;
   if (!sliceId) return [];
-  return idx.bundle.neighbors[entityId]?.[sliceId] ?? [];
+  return idx.neighbors[entityId]?.[sliceId] ?? [];
+}
+
+function longestList(neighbors: Neighbors): number {
+  let max = 0;
+  for (const perSlice of Object.values(neighbors)) {
+    for (const list of Object.values(perSlice)) {
+      if (list.length > max) max = list.length;
+    }
+  }
+  return max;
+}
+
+/**
+ * Ergebnis einer Nachbarabfrage einsetzen: aus Zeilennummern, Scores und der
+ * Kandidatentabelle entstehen Einträge im Format von `neighbors` (`label`,
+ * `score`, `group`, dazu `lemma`). Alle Nutzer von `neighborsAt()` bleiben
+ * dadurch unverändert.
+ *
+ * `pointByLabel` wird um die Koordinaten aller Kandidaten ergänzt — damit hat
+ * jeder mögliche Nachbar eine Position im Bild, nicht nur die aus
+ * `vocab_points`. Bestehende Einträge (Anker zuerst) behalten Vorrang, wie in
+ * `indexBundle()`.
+ */
+export function withQueriedNeighbors(
+  idx: IndexedBundle,
+  candidates: NeighborCandidates,
+  result: NeighborQueryResult,
+): IndexedBundle {
+  const posByRow = new Map<number, number>();
+  candidates.row.forEach((row, i) => posByRow.set(row, i));
+
+  const neighbors: Neighbors = {};
+  for (const [entityId, perSlice] of Object.entries(result.neighbors)) {
+    const out: Record<string, Neighbor[]> = {};
+    for (const [sliceId, { rows, scores }] of Object.entries(perSlice)) {
+      const list: Neighbor[] = [];
+      rows.forEach((row, r) => {
+        const i = posByRow.get(row);
+        if (i === undefined) return; // Zeile ohne Kandidat: Antwort passt nicht zur Tabelle
+        list.push({
+          label: candidates.label[i],
+          score: scores[r],
+          group: candidates.group[i],
+          lemma: candidates.lemma[i],
+        });
+      });
+      out[sliceId] = list;
+    }
+    neighbors[entityId] = out;
+  }
+
+  const pointByLabel = new Map(idx.pointByLabel);
+  candidates.label.forEach((label, i) => {
+    const coords = candidates.coords_3d[i];
+    if (!pointByLabel.has(label)) pointByLabel.set(label, coords);
+    const lower = label.toLowerCase();
+    if (!pointByLabel.has(lower)) pointByLabel.set(lower, coords);
+  });
+
+  return { ...idx, neighbors, neighborSource: "query", pointByLabel, maxNeighborK: result.k };
+}
+
+/** Zurück zu den vorberechneten Nachbarn des Bundles (Rückfall). */
+export function withBundleNeighbors(idx: IndexedBundle): IndexedBundle {
+  if (idx.neighborSource === "bundle") return idx;
+  return {
+    ...idx,
+    neighbors: idx.bundle.neighbors,
+    neighborSource: "bundle",
+    maxNeighborK: longestList(idx.bundle.neighbors),
+  };
 }
 
 /** Anker zu einem NN-Label (exakt, dann case-insensitiv). */

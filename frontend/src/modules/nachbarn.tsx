@@ -21,6 +21,8 @@ import { entityColor } from "../viz/theme";
 import { Section } from "../ui/Section";
 import { TargetWords } from "../ui/Legend";
 import { Icon } from "../design/icons";
+import { NeighborKControl } from "../ui/NeighborKControl";
+import { NeighborFilterNote } from "../ui/NeighborFilterNote";
 
 export function NachbarnConfig() {
   const { indexed, activeEntityId, setActiveEntity } = useViz();
@@ -42,10 +44,17 @@ export function NachbarnConfig() {
           ))}
         </select>
         <p className="mode__hint">
-          Der Fluss zeigt immer genau ein Wort — bei bis zu {"~"}20 Nachbarlinien
-          wäre ein Nebeneinander nicht mehr lesbar. Auswahl gilt auch für das
-          Nachbarn-Panel im Wortraum.
+          Der Fluss zeigt immer genau ein Wort — schon bei einem werden es schnell
+          viele Nachbarlinien. Auswahl gilt auch für das Nachbarn-Panel im Wortraum.
         </p>
+      </Section>
+
+      <Section title="Nachbarn" icon="orbit">
+        <NeighborKControl />
+        <p className="mode__hint">
+          Zahl der Rangplätze im Fluss — derselbe Regler wie im Wortraum.
+        </p>
+        <NeighborFilterNote />
       </Section>
 
       <Section title="Zielwörter" icon="layers" badge={indexed.tracks.length}>
@@ -64,8 +73,9 @@ export function NachbarnConfig() {
           <dd>Umschlag: Anteil der Top-k, der gegenüber der Vorscheibe neu ist.</dd>
         </dl>
         <p className="card__note">
-          Quelle ist der <code>neighbors</code>-Block des Bundles — vorberechnete
-          nächste Nachbarn je Zeitscheibe, nicht hier berechnet.
+          Quelle sind die Nachbarlisten je Zeitscheibe: mit Suchraum im Bundle vom
+          Backend mit den Filtern der Seite „Nachbar-Filter“ berechnet, sonst der
+          vorberechnete <code>neighbors</code>-Block.
         </p>
       </Section>
     </>
@@ -73,13 +83,13 @@ export function NachbarnConfig() {
 }
 
 export function NachbarnMain() {
-  const { indexed, status, activeEntityId } = useViz();
+  const { indexed, status, activeEntityId, neighborK } = useViz();
   const mode = useMode();
 
   const entityId = activeEntityId ?? indexed?.tracks[0]?.entity.id ?? null;
   const flow = useMemo(
-    () => (indexed && entityId ? buildNeighborFlow(indexed, entityId) : null),
-    [indexed, entityId],
+    () => (indexed && entityId ? buildNeighborFlow(indexed, entityId, neighborK) : null),
+    [indexed, entityId, neighborK],
   );
 
   if (!indexed) {
@@ -106,8 +116,9 @@ export function NachbarnMain() {
         </div>
         <p className="warnnote warnnote--block">
           <Icon name="info" size={13} />
-          Für dieses Wort liefert das Bundle keine Nachbarn (oder es ist in keiner
-          Zeitscheibe belegt). Der <code>neighbors</code>-Block ist optional.
+          Für dieses Wort gibt es keine Nachbarn (es ist in keiner Zeitscheibe
+          belegt, die Filter lassen keine übrig, oder der Regler „Nachbarn“ steht
+          auf 0). Der <code>neighbors</code>-Block ist optional.
         </p>
       </div>
     );
@@ -141,6 +152,7 @@ export function NachbarnMain() {
             Linie abbricht, ist der Nachbar aus den Top-{flow.k} gefallen — Farbe
             steht für seine Gruppe, nicht für das einzelne Wort.
           </p>
+          <NeighborFilterNote />
         </div>
         <FlowGroupLegend items={usedGroups} mode={mode} />
       </div>

@@ -6,7 +6,19 @@ requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.110",
     "uvicorn[standard]>=0.29",
+    # Nachbarabfragen über den Suchraum (app/neighbors.py)
+    "numpy>=1.26",
+    "polars>=1.0",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "httpx>=0.27",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 
 [tool.uvicorn]
 # Start: uvicorn app.main:app --reload  (aus dem backend/-Verzeichnis)

@@ -5,8 +5,9 @@
  * verwechselt; k schneidet nur eine Liste ab, die im vollen Vektorraum
  * entstanden ist.
  *
- * Obergrenze kommt aus dem Bundle (`maxNeighborK`), nicht aus einer geratenen
- * Konstante: ältere Bundles liefern 8 Nachbarn je Zelle, neue 150.
+ * Obergrenze kommt aus den aktuellen Listen (`maxNeighborK`), nicht aus einer
+ * geratenen Konstante: ältere Bundles liefern 8 Nachbarn je Zelle, neue 150,
+ * eine Abfrage mit Filtern bis 1000.
  */
 import { useViz } from "../state/store";
 import { MAX_RENDERED } from "../viz/NeighborPoints";
@@ -16,6 +17,7 @@ export function NeighborKControl() {
   if (!indexed) return null;
 
   const max = indexed.maxNeighborK;
+  const quelle = indexed.neighborSource === "query" ? "abgefragt" : "im Bundle";
 
   return (
     <div className="vocabctl">
@@ -27,14 +29,14 @@ export function NeighborKControl() {
           step={1}
           value={Math.min(neighborK, max)}
           onChange={(e) => setNeighborK(parseInt(e.target.value, 10))}
-          title={`Wie viele der vorberechneten Nachbarn gezeigt werden – dieses Bundle liefert bis zu ${max} je Zeitscheibe`}
+          title={`Wie viele der Nachbarn gezeigt werden – bis zu ${max} je Zeitscheibe (${quelle})`}
         />
         <span className="vocabctl__value lt-mono">{Math.min(neighborK, max)}</span>
       </div>
       <p className="vocabctl__note">
         {neighborK <= 0
           ? "0 = aus: keine Nachbarn in Liste und Bild."
-          : `von ${max} im Bundle${
+          : `von ${max} ${quelle}${
               neighborK > MAX_RENDERED
                 ? ` · im Bild nur die ersten ${MAX_RENDERED}, die Liste zeigt alle`
                 : ""
