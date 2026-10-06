@@ -9,7 +9,7 @@ export type IconName =
   | "search" | "chevron" | "chevDown" | "x" | "play" | "pause" | "filter"
   | "sun" | "moon" | "upload" | "file" | "layers" | "dot" | "reset" | "target"
   | "database" | "orbit" | "matrix" | "chart" | "pin" | "info"
-  | "trend" | "compare" | "flow";
+  | "trend" | "compare" | "flow" | "ranking";
 
 const PATHS: Record<IconName, JSX.Element> = {
   search: <><circle cx="7" cy="7" r="4.5" /><path d="M10.5 10.5 14 14" /></>,
@@ -39,6 +39,7 @@ const PATHS: Record<IconName, JSX.Element> = {
   // Wort gegen Wort: zwei Verläufe, die sich annähern bzw. auseinandergehen.
   compare: <><path d="M2 3.5c4.5 0 5 9 12 9" /><path d="M2 12.5c4.5 0 5-9 12-9" /></>,
   // Nachbarschafts-Fluss: Bahnen, die die Plätze tauschen.
+  ranking: <><path d="M2.5 4h11" /><path d="M2.5 8h7.5" /><path d="M2.5 12h4" /></>,
   flow: <><path d="M2 4h3c2.5 0 2.5 4 5 4h4" /><path d="M2 12h3c2.5 0 2.5-4 5-4h4" /><path d="M2 8h1.5" /></>,
 };
 

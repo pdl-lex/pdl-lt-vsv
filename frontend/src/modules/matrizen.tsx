@@ -29,6 +29,10 @@ import {
   type HoverCell,
 } from "../viz/SimilarityMatrixCanvas";
 import { useMatrixOptions, type ScaleMode } from "../state/matrixOptions";
+import { useMetricOptions, type Metric } from "../state/metricOptions";
+import { buildOverlapMatrix } from "../viz/overlap";
+import { MetricControl } from "../ui/MetricControl";
+import { NeighborDiffPanel } from "../ui/NeighborDiff";
 
 const SMALL = 208; // Kantenlänge einer Small-Multiple-Matrix
 const LARGE = 520; // Kantenlänge der Detailmatrix
@@ -42,6 +46,10 @@ export function MatrizenConfig() {
     <>
       <Section title="Zielwörter" icon="target" badge={indexed.tracks.length}>
         <TargetWords />
+      </Section>
+
+      <Section title="Metrik" icon="layers">
+        <MetricControl />
       </Section>
 
       <Section title="Skalierung" icon="layers">
@@ -84,11 +92,20 @@ export function MatrizenConfig() {
         </dl>
         <p className="card__note">
           Nach Kiyama et al., „Analyzing Continuous Semantic Shifts with Diachronic
-          Word Similarity Matrices".
+          Word Similarity Matrices". Die Überlappung der Nachbarlisten nach Gonen et
+          al., „Simple, Interpretable and Stable Method for Detecting Words with
+          Usage Change across Corpora" (2020). Weichen beide Metriken stark
+          voneinander ab, lohnt ein Blick auf die Nachbarn selbst (Klick auf eine
+          Zelle in der Detailansicht).
         </p>
       </Section>
     </>
   );
+}
+
+/** Zellenwert als Text: Kosinus mit Nachkommastellen, Überlappung als Prozent. */
+function formatValue(metric: Metric, v: number, digits = 3): string {
+  return metric === "ueberlappung" ? `${Math.round(v * 100)} %` : v.toFixed(digits);
 }
 
 /** Achsen-Beschriftung: so viele Ticks, dass die Labels nicht kollidieren. */
@@ -103,10 +120,12 @@ function axisTicks(labels: string[], target = 8): { index: number; label: string
 function MatrixCard({
   matrix,
   domain,
+  metric,
   onOpen,
 }: {
   matrix: SimilarityMatrix;
   domain: { min: number; max: number };
+  metric: Metric;
   onOpen: () => void;
 }) {
   const mode = useMode();
@@ -145,7 +164,7 @@ function MatrixCard({
                   {indexed.sortedSlices[hover.j]?.label ?? "—"}
                 </span>
                 <span className={Number.isFinite(hover.value) ? "simmat__val" : "simdetail__val--muted"}>
-                  {Number.isFinite(hover.value) ? hover.value.toFixed(3) : "kein Beleg"}
+                  {Number.isFinite(hover.value) ? formatValue(metric, hover.value) : "kein Beleg"}
                 </span>
               </>
             ) : (
@@ -168,15 +187,21 @@ function MatrixCard({
 function MatrixDetail({
   matrix,
   domain,
+  metric,
+  overlapK,
   onClose,
 }: {
   matrix: SimilarityMatrix;
   domain: { min: number; max: number };
+  metric: Metric;
+  overlapK: number;
   onClose: () => void;
 }) {
   const mode = useMode();
   const indexed = useViz((s) => s.indexed)!;
   const [hover, setHover] = useState<HoverCell | null>(null);
+  // Festgehaltene Zelle für den Nachbar-Diff; die Diagonale sagt nichts.
+  const [picked, setPicked] = useState<{ i: number; j: number } | null>(null);
 
   const labels = indexed.sortedSlices.map((s) => s.label ?? s.id);
   const ticks = axisTicks(labels);
@@ -189,7 +214,7 @@ function MatrixDetail({
     if (!Number.isFinite(hover.value)) {
       return { a, b, text: "kein Beleg", muted: true };
     }
-    return { a, b, text: hover.value.toFixed(4), muted: false };
+    return { a, b, text: formatValue(metric, hover.value, 4), muted: false };
   })();
 
   return (
@@ -221,6 +246,8 @@ function MatrixDetail({
             size={LARGE}
             shiftSliceIndex={indexed.shiftSliceIndex}
             onHover={setHover}
+            selected={picked}
+            onSelect={(c) => setPicked(c.i === c.j ? null : { i: c.i, j: c.j })}
           />
           <div className="simdetail__xlab" style={{ width: LARGE }}>
             {ticks.map((t) => (
@@ -249,7 +276,14 @@ function MatrixDetail({
         ) : (
           <span className="simdetail__hint">Über die Matrix fahren, um Zellenwerte abzulesen.</span>
         )}
+        {!picked && (
+          <span className="simdetail__hint--inline">Klick auf eine Zelle zeigt die Nachbarn beider Zeitscheiben.</span>
+        )}
       </div>
+
+      {picked && (
+        <NeighborDiffPanel entityId={matrix.entityId} i={picked.i} j={picked.j} k={overlapK} />
+      )}
     </div>
   );
 }
@@ -257,6 +291,7 @@ function MatrixDetail({
 export function MatrizenMain() {
   const { indexed, status, selectedEntityIds } = useViz();
   const { scaleMode } = useMatrixOptions();
+  const { metric, overlapK } = useMetricOptions();
   const mode = useMode();
   const [detailId, setDetailId] = useState<string | null>(null);
 
@@ -264,9 +299,13 @@ export function MatrizenMain() {
     if (!indexed) return [];
     return indexed.tracks
       .filter((t) => selectedEntityIds.has(t.entity.id))
-      .map((t) => buildSimilarityMatrix(indexed, t.entity.id))
+      .map((t) =>
+        metric === "ueberlappung"
+          ? buildOverlapMatrix(indexed, t.entity.id, overlapK)
+          : buildSimilarityMatrix(indexed, t.entity.id),
+      )
       .filter((m): m is SimilarityMatrix => m !== null);
-  }, [indexed, selectedEntityIds]);
+  }, [indexed, selectedEntityIds, metric, overlapK]);
 
   const shared = useMemo(() => sharedDomain(matrices), [matrices]);
 
@@ -297,8 +336,12 @@ export function MatrizenMain() {
           <h2 className="pane__title">Ähnlichkeitsmatrizen</h2>
           <p className="pane__desc">
             Jede Zelle vergleicht ein Zielwort mit sich selbst zu zwei Zeitpunkten:{" "}
-            <code>M[i][j] = cos(v_ti, v_tj)</code>. Das Muster verrät die <em>Art</em>{" "}
-            der Verschiebung, nicht nur ihr Ausmaß.
+            {metric === "ueberlappung" ? (
+              <code>M[i][j] = |NN_k(ti) ∩ NN_k(tj)| / k</code>
+            ) : (
+              <code>M[i][j] = cos(v_ti, v_tj)</code>
+            )}
+            . Das Muster verrät die <em>Art</em> der Verschiebung, nicht nur ihr Ausmaß.
           </p>
         </div>
         {/* In der Detailansicht gilt die Skala genau dieser Matrix; in der
@@ -308,13 +351,21 @@ export function MatrizenMain() {
           domain={detail ? domainFor(detail) : shared}
           mode={mode}
           masked={anyMasked}
+          label={metric === "ueberlappung" ? "Gemeinsame Nachbarn" : "Kosinus-Ähnlichkeit"}
+          format={(v) => formatValue(metric, v, 2)}
         />
       </div>
 
-      <SourceNote source={source} />
+      {metric === "kosinus" && <SourceNote source={source} />}
 
       {detail ? (
-        <MatrixDetail matrix={detail} domain={domainFor(detail)} onClose={() => setDetailId(null)} />
+        <MatrixDetail
+          matrix={detail}
+          domain={domainFor(detail)}
+          metric={metric}
+          overlapK={overlapK}
+          onClose={() => setDetailId(null)}
+        />
       ) : (
         <>
           <div className="simgrid">
@@ -323,6 +374,7 @@ export function MatrizenMain() {
                 key={m.entityId}
                 matrix={m}
                 domain={domainFor(m)}
+                metric={metric}
                 onOpen={() => setDetailId(m.entityId)}
               />
             ))}

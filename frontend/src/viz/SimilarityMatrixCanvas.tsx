@@ -33,6 +33,8 @@ export function SimilarityMatrixCanvas({
   size,
   shiftSliceIndex,
   onHover,
+  selected = null,
+  onSelect,
 }: {
   matrix: SimilarityMatrix;
   domain: { min: number; max: number };
@@ -42,6 +44,9 @@ export function SimilarityMatrixCanvas({
   /** Index der Zäsur (`meta.shift_point`) — als Hilfslinie auf beiden Achsen. */
   shiftSliceIndex: number | null;
   onHover?: (cell: HoverCell | null) => void;
+  /** Festgehaltene Zelle (Klick) — bekommt einen Rahmen. */
+  selected?: { i: number; j: number } | null;
+  onSelect?: (cell: HoverCell) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hover, setHover] = useState<HoverCell | null>(null);
@@ -118,21 +123,42 @@ export function SimilarityMatrixCanvas({
       ctx.restore();
     }
 
+    // 4b) Festgehaltene Zelle: Rahmen, damit sie beim Weiterhovern auffindbar bleibt.
+    if (selected) {
+      ctx.save();
+      ctx.strokeStyle = mode === "light" ? "#b03a3a" : "#d97676";
+      ctx.lineWidth = 2;
+      const x0 = Math.round(selected.j * cell);
+      const y0 = Math.round(selected.i * cell);
+      ctx.strokeRect(x0 - 1, y0 - 1, Math.max(3, Math.round(cell)) + 2, Math.max(3, Math.round(cell)) + 2);
+      ctx.restore();
+    }
+
     // 5) Rahmen zuletzt, damit er nicht von Zellen überschrieben wird.
     ctx.strokeStyle = ink.baseline;
     ctx.lineWidth = 1;
     ctx.strokeRect(0.5, 0.5, size - 1, size - 1);
-  }, [matrix, domain.min, domain.max, mode, size, shiftSliceIndex, hover]);
+  }, [matrix, domain.min, domain.max, mode, size, shiftSliceIndex, hover, selected?.i, selected?.j]);
 
-  const pick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const cellAt = (e: React.MouseEvent<HTMLCanvasElement>): HoverCell | null => {
     const rect = e.currentTarget.getBoundingClientRect();
     const n = matrix.n;
     const j = Math.floor(((e.clientX - rect.left) / rect.width) * n);
     const i = Math.floor(((e.clientY - rect.top) / rect.height) * n);
-    if (i < 0 || j < 0 || i >= n || j >= n) return;
-    const next: HoverCell = { i, j, value: matrix.values[i * n + j] };
+    if (i < 0 || j < 0 || i >= n || j >= n) return null;
+    return { i, j, value: matrix.values[i * n + j] };
+  };
+
+  const pick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const next = cellAt(e);
+    if (!next) return;
     setHover(next);
     onHover?.(next);
+  };
+
+  const click = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const c = cellAt(e);
+    if (c && onSelect) onSelect(c);
   };
 
   const clear = () => {
@@ -147,6 +173,7 @@ export function SimilarityMatrixCanvas({
       style={{ width: size, height: size }}
       onMouseMove={pick}
       onMouseLeave={clear}
+      onClick={onSelect ? click : undefined}
       role="img"
       aria-label={`Ähnlichkeitsmatrix für ${matrix.entityLabel}: ${matrix.n} × ${matrix.n} Zeitscheiben`}
     />
@@ -158,19 +185,23 @@ export function SimilarityLegend({
   domain,
   mode,
   masked,
+  label = "Kosinus-Ähnlichkeit",
+  format = (v: number) => v.toFixed(2),
 }: {
   domain: { min: number; max: number };
   mode: Mode;
+  label?: string;
+  format?: (v: number) => string;
   /** true, wenn irgendeine gezeigte Matrix maskierte Felder hat. */
   masked: boolean;
 }) {
   const stops = Array.from({ length: 24 }, (_, i) => sequentialColor(i / 23, mode)).join(",");
   return (
     <div className="simleg">
-      <span className="simleg__label">Kosinus-Ähnlichkeit</span>
-      <span className="simleg__num lt-mono">{domain.min.toFixed(2)}</span>
+      <span className="simleg__label">{label}</span>
+      <span className="simleg__num lt-mono">{format(domain.min)}</span>
       <span className="simleg__ramp" style={{ background: `linear-gradient(to right, ${stops})` }} />
-      <span className="simleg__num lt-mono">{domain.max.toFixed(2)}</span>
+      <span className="simleg__num lt-mono">{format(domain.max)}</span>
       {masked && (
         <span className="simleg__mask">
           <span className="simleg__hatch" />

@@ -18,6 +18,7 @@ import { MatrizenConfig, MatrizenMain } from "./matrizen";
 import { DriftConfig, DriftMain } from "./drift";
 import { PaareConfig, PaareMain } from "./paare";
 import { NachbarnConfig, NachbarnMain } from "./nachbarn";
+import { WandelConfig, WandelMain } from "./wandel";
 import { NachbarfilterConfig, NachbarfilterMain } from "./nachbarfilter";
 
 export interface ModuleDef {
@@ -119,6 +120,18 @@ export const MODULES: ModuleDef[] = [
       "Die k nächsten Nachbarn je Zeitscheibe als Bump-Diagramm — welches Umfeld ein Wort wann hatte.",
     Config: NachbarnConfig,
     Main: NachbarnMain,
+  },
+  {
+    id: "wandel",
+    label: "Wandel-Ranking",
+    group: "Visualisierung",
+    icon: "ranking",
+    eyebrow: "Visualisierung",
+    title: "Wandel-Ranking",
+    description:
+      "Welches Wort hat zwischen zwei Zeiträumen seine Nachbarn am stärksten gewechselt (Gonen)?",
+    Config: WandelConfig,
+    Main: WandelMain,
   },
 ];
 

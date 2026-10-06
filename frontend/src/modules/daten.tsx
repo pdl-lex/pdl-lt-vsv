@@ -258,6 +258,13 @@ export function DatenMain() {
                   <em>Die k nächsten Nachbarn je Zeitscheibe als Bump-Diagramm</em>
                 </span>
               </button>
+              <button type="button" className="jump__btn" onClick={() => setActiveId("wandel")}>
+                <Icon name="ranking" size={15} />
+                <span>
+                  <strong>Wandel-Ranking</strong>
+                  <em>Welches Wort hat zwischen zwei Zeiträumen seine Nachbarn gewechselt (Gonen)</em>
+                </span>
+              </button>
             </div>
           </section>
         </div>

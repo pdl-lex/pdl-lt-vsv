@@ -28,6 +28,7 @@
  */
 import type { IndexedBundle } from "../data/model";
 import { cosine, entityVectors, similaritySourceOf, type SimilaritySource } from "./similarity";
+import { effectiveK, neighborSets, overlap } from "./overlap";
 
 /** Wogegen die Drift gemessen wird. */
 export type DriftBaseline =
@@ -88,16 +89,47 @@ export function buildDriftSeries(
 ): DriftSeries | null {
   const vectors = entityVectors(idx, entityId, source);
   if (!vectors) return null;
+  return driftFrom(idx, entityId, baseline, source, vectors.map((v) => v !== null), (i, j) =>
+    cosine(vectors[i]!, vectors[j]!),
+  );
+}
 
+/**
+ * Drift-Kurve aus der Nachbarschafts-Überlappung (Gonen et al.): `1 − overlap@k`
+ * statt `1 − cos`. Bezugspunkte und Lückenregel sind dieselben, nur die
+ * Paarmetrik ist ausgetauscht.
+ */
+export function buildOverlapDriftSeries(
+  idx: IndexedBundle,
+  entityId: string,
+  baseline: DriftBaseline,
+  k: number,
+): DriftSeries | null {
+  if (!idx.tracks.some((t) => t.entity.id === entityId)) return null;
+  const sets = neighborSets(idx, entityId, effectiveK(idx, k));
+  return driftFrom(idx, entityId, baseline, similaritySourceOf(idx), sets.map((s) => s !== null), (i, j) =>
+    overlap(sets[i]!, sets[j]!),
+  );
+}
+
+/** Gemeinsamer Kern beider Drift-Arten: `present` maskiert, `sim(i, j)` liefert
+ * die Ähnlichkeit zweier belegter Scheiben, die Kurve ist `1 − sim`. */
+function driftFrom(
+  idx: IndexedBundle,
+  entityId: string,
+  baseline: DriftBaseline,
+  source: SimilaritySource,
+  present: boolean[],
+  sim: (i: number, j: number) => number,
+): DriftSeries {
   const n = idx.sliceCount;
   const values: (number | null)[] = new Array(n).fill(null);
+  const count = () => values.reduce<number>((acc, v) => acc + (v === null ? 0 : 1), 0);
 
   if (baseline.kind === "vorgaenger") {
     for (let i = 1; i < n; i++) {
-      const a = vectors[i - 1];
-      const b = vectors[i];
-      if (!a || !b) continue;
-      const c = cosine(a, b);
+      if (!present[i - 1] || !present[i]) continue;
+      const c = sim(i - 1, i);
       if (Number.isFinite(c)) values[i] = 1 - c;
     }
     return {
@@ -106,23 +138,21 @@ export function buildDriftSeries(
       values,
       baselineIndex: null,
       baselineMissing: false,
-      valueCount: values.reduce<number>((acc, v) => acc + (v === null ? 0 : 1), 0),
+      valueCount: count(),
       source,
     };
   }
 
+  const firstIdx = present.indexOf(true);
   const baselineIndex =
-    baseline.kind === "erstbeleg" ? firstPresentIndex(vectors) : baseline.index;
-  const ref =
-    baselineIndex !== null && baselineIndex >= 0 && baselineIndex < n
-      ? vectors[baselineIndex]
-      : null;
+    baseline.kind === "erstbeleg" ? (firstIdx === -1 ? null : firstIdx) : baseline.index;
+  const hasRef = baselineIndex !== null && baselineIndex >= 0 && baselineIndex < n && present[baselineIndex];
 
-  if (ref) {
+  if (hasRef) {
+    const ref = baselineIndex as number;
     for (let i = 0; i < n; i++) {
-      const v = vectors[i];
-      if (!v) continue;
-      const c = cosine(ref, v);
+      if (!present[i]) continue;
+      const c = sim(ref, i);
       if (Number.isFinite(c)) values[i] = 1 - c;
     }
   }
@@ -132,8 +162,8 @@ export function buildDriftSeries(
     entityLabel: labelOf(idx, entityId),
     values,
     baselineIndex: baselineIndex ?? null,
-    baselineMissing: ref === null,
-    valueCount: values.reduce<number>((acc, v) => acc + (v === null ? 0 : 1), 0),
+    baselineMissing: !hasRef,
+    valueCount: count(),
     source,
   };
 }

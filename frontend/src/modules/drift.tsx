@@ -21,7 +21,15 @@ import { useDriftOptions, type BaselineKind } from "../state/driftOptions";
 import { useMode } from "../viz/useMode";
 import { entityColor } from "../viz/theme";
 import { similaritySourceOf } from "../viz/similarity";
-import { buildDriftSeries, seriesDomain, type DriftBaseline, type DriftSeries } from "../viz/series";
+import {
+  buildDriftSeries,
+  buildOverlapDriftSeries,
+  seriesDomain,
+  type DriftBaseline,
+  type DriftSeries,
+} from "../viz/series";
+import { useMetricOptions } from "../state/metricOptions";
+import { MetricControl } from "../ui/MetricControl";
 import { ChartLegend, LineChart, type LineSeries } from "../viz/LineChart";
 import { Section } from "../ui/Section";
 import { TargetWords } from "../ui/Legend";
@@ -42,6 +50,10 @@ export function DriftConfig() {
     <>
       <Section title="Zielwörter" icon="target" badge={indexed.tracks.length}>
         <TargetWords />
+      </Section>
+
+      <Section title="Metrik" icon="layers">
+        <MetricControl />
       </Section>
 
       <Section title="Bezugspunkt" icon="layers">
@@ -100,7 +112,8 @@ export function DriftConfig() {
         <p className="card__note">
           Nach Hamilton et al., „Diachronic Word Embeddings Reveal Statistical Laws
           of Semantic Change". Die Kurve ist eine Zeile der Ähnlichkeitsmatrix,
-          an der Achse gespiegelt (<code>1 − cos</code>).
+          an der Achse gespiegelt (<code>1 − cos</code> bzw.{" "}
+          <code>1 − Überlappung</code> nach Gonen et al.).
         </p>
       </Section>
     </>
@@ -127,6 +140,7 @@ function summarize(series: DriftSeries) {
 export function DriftMain() {
   const { indexed, status, selectedEntityIds } = useViz();
   const { baselineKind, baselineSlice } = useDriftOptions();
+  const { metric, overlapK } = useMetricOptions();
   const mode = useMode();
 
   const baseline = useMemo<DriftBaseline>(
@@ -141,10 +155,13 @@ export function DriftMain() {
       .filter(({ track }) => selectedEntityIds.has(track.entity.id))
       .map(({ track, colorIndex }) => ({
         colorIndex,
-        series: buildDriftSeries(indexed, track.entity.id, baseline),
+        series:
+          metric === "ueberlappung"
+            ? buildOverlapDriftSeries(indexed, track.entity.id, baseline, overlapK)
+            : buildDriftSeries(indexed, track.entity.id, baseline),
       }))
       .filter((x): x is { colorIndex: number; series: DriftSeries } => x.series !== null);
-  }, [indexed, selectedEntityIds, baseline]);
+  }, [indexed, selectedEntityIds, baseline, metric, overlapK]);
 
   if (!indexed) {
     return (
@@ -188,14 +205,19 @@ export function DriftMain() {
           <h2 className="pane__title">Drift-Kurven</h2>
           <p className="pane__desc">
             Abstand eines Wortes zu seinem Bezugspunkt über die Zeit:{" "}
-            <code>1 − cos(v_ref, v_t)</code>. Hoch heißt „weit weg vom
+            {metric === "ueberlappung" ? (
+              <code>1 − |NN_k(ref) ∩ NN_k(t)| / k</code>
+            ) : (
+              <code>1 − cos(v_ref, v_t)</code>
+            )}
+            . Hoch heißt „weit weg vom
             Bezugspunkt", nicht „unwichtig" — und die Kurve setzt aus, wo das
             Wort nicht belegt ist.
           </p>
         </div>
       </div>
 
-      <SourceNote source={similaritySourceOf(indexed)} />
+      {metric === "kosinus" && <SourceNote source={similaritySourceOf(indexed)} />}
 
       {missing.length > 0 && (
         <p className="warnnote warnnote--block">
