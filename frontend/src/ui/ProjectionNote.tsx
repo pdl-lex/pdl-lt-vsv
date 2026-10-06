@@ -18,9 +18,9 @@ const DIMENSIONSREDUKTION_INFO =
   "Raum — für Details anklicken.";
 
 export function ProjectionNote() {
-  const { indexed, activeEntityId } = useViz();
+  const { indexed } = useViz();
   const [open, setOpen] = useState(false);
-  if (!indexed || !activeEntityId) return null;
+  if (!indexed) return null;
 
   const {
     explained_variance_ratio_3d: evr3d,
@@ -69,7 +69,7 @@ export function ProjectionNote() {
             Zwei Wörter können in der Visualisierung nahe beieinanderliegen, ohne im vollen Raum ähnlich zu sein — und umgekehrt.
           </p>
           <p className="pn__note">
-            Verlässlicher für konkrete Vergleiche: Nachbarn-Panel, Ähnlichkeitsmatrizen und
+            Verlässlicher für konkrete Vergleiche: Panel „Nächste Nachbarn“, Ähnlichkeitsmatrizen und
             Drift-Kurven, die auf dem volldimensionalen Vektor berechnet werden.
           </p>
         </div>

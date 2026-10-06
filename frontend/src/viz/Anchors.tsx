@@ -8,6 +8,7 @@ import { Html } from "@react-three/drei";
 import type { IndexedBundle } from "../data/model";
 import { toWorld } from "../data/model";
 import { clusterColor, INK, type Mode } from "./theme";
+import { useViz } from "../state/store";
 
 interface Props {
   idx: IndexedBundle;
@@ -18,6 +19,7 @@ interface Props {
 
 export function Anchors({ idx, mode, highlighted }: Props) {
   const clusterIndex = new Map(idx.clusters.map((c, i) => [c, i]));
+  const hiddenClusters = useViz((s) => s.hiddenClusters);
 
   return (
     <group>
@@ -26,6 +28,7 @@ export function Anchors({ idx, mode, highlighted }: Props) {
         const ci = clusterIndex.get(a.cluster) ?? 0;
         const color = clusterColor(ci, mode);
         const isHi = highlighted?.has(a.label) ?? false;
+        if (!isHi && hiddenClusters.has(a.cluster)) return null;
         return (
           <group key={`${a.label}-${i}`} position={pos}>
             <mesh>

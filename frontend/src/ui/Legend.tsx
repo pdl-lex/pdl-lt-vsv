@@ -2,8 +2,10 @@
  * Legende + Auswahl, aufgeteilt in drei Konfigurator-Sektionen:
  * - `TargetWords`   — Zielwörter (kräftige Identitätsfarben), an/abwählbar +
  *                     per Klick „aktiv" (steuert NN-Overlay/Panel).
- * - `AnchorClusters`— Anker-Cluster (recessive Farben), erklärt die Anker-Karte.
- * - `ConfidenceKey` — die freq→Größe/Deckkraft-Kopplung sichtbar gemacht.
+ * - `AnchorClusters`— Anker-Cluster (recessive Farben), erklärt die Anker-Karte
+ *                     und blendet Cluster per Checkbox ein/aus.
+ * - `ConfidenceKey` — die freq→Größe/Deckkraft-Kopplung sichtbar gemacht
+ *                     (Sektion „Häufigkeit“).
  */
 import { useViz } from "../state/store";
 import { useMode } from "../viz/useMode";
@@ -49,18 +51,28 @@ export function TargetWords() {
 }
 
 export function AnchorClusters() {
-  const { indexed } = useViz();
+  const { indexed, hiddenClusters, toggleCluster } = useViz();
   const mode = useMode();
   if (!indexed || indexed.clusters.length === 0) return null;
 
   return (
     <div className="clusters">
-      {indexed.clusters.map((c, i) => (
-        <div key={c} className="clusters__row">
-          <span className="swatch swatch--dot" style={{ background: clusterColor(i, mode) }} />
-          <span className="clusters__label">{c}</span>
-        </div>
-      ))}
+      {indexed.clusters.map((c, i) => {
+        const shown = !hiddenClusters.has(c);
+        return (
+          <label key={c} className="clusters__row">
+            <input
+              type="checkbox"
+              className="words__check"
+              checked={shown}
+              onChange={() => toggleCluster(c)}
+              aria-label={`Cluster ${c} anzeigen`}
+            />
+            <span className="swatch swatch--dot" style={{ background: clusterColor(i, mode) }} />
+            <span className="clusters__label" style={{ opacity: shown ? 1 : 0.5 }}>{c}</span>
+          </label>
+        );
+      })}
     </div>
   );
 }
@@ -73,7 +85,12 @@ export function ConfidenceKey() {
         <span className="conf__dot conf__dot--md" />
         <span className="conf__dot conf__dot--lg" />
       </div>
-      <span className="conf__text">Größe &amp; Deckkraft ∝ Häufigkeit (freq)</span>
+      <span
+        className="conf__text"
+        title="Fläche wächst linear mit freq, relativ zum häufigsten Zielwort im Bundle; leere Zellen sind unsichtbar"
+      >
+        Größe &amp; Deckkraft: Vorkommen des Zielworts in der Zeitscheibe (freq)
+      </span>
     </div>
   );
 }

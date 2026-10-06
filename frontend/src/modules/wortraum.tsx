@@ -19,6 +19,7 @@ import { NeighborPanel } from "../ui/NeighborPanel";
 import { NeighborFilterNote } from "../ui/NeighborFilterNote";
 import { VolumeNote } from "../ui/VolumeNote";
 import { ProjectionNote } from "../ui/ProjectionNote";
+import { TargetPicker } from "../ui/TargetPicker";
 import { ModeSwitch } from "../ui/ModeSwitch";
 import { FacetFilter } from "../ui/FacetFilter";
 
@@ -34,7 +35,7 @@ export function WortraumConfig() {
         <ModeSwitch />
       </Section>
 
-      <Section title="Zielwörter" icon="target" badge={indexed.tracks.length}>
+      <Section title="Trajektorien" icon="target" badge={indexed.tracks.length}>
         <TargetWords />
       </Section>
 
@@ -57,11 +58,11 @@ export function WortraumConfig() {
       {viewMode === "aggregat" && indexed.maxNeighborK > 0 && (
         <Section title="Nachbarn" icon="orbit" defaultOpen={false}>
           <NeighborKControl />
-          <NeighborFilterNote />
+          <NeighborFilterNote short />
         </Section>
       )}
 
-      <Section title="Konfidenz" icon="dot" defaultOpen={false}>
+      <Section title="Häufigkeit" icon="dot" defaultOpen={false}>
         <ConfidenceKey />
       </Section>
     </>
@@ -86,7 +87,12 @@ export function WortraumMain() {
 
   return (
     <>
-      <Canvas camera={{ position: [0, 4, 17], fov: 50, near: 0.1, far: 400 }}>
+      {/* `isolation`: drei-<Html>-Labels bekommen riesige z-indizes; so bleiben
+          sie im Canvas gefangen und liegen nicht über den Overlay-Karten. */}
+      <Canvas
+        camera={{ position: [0, 4, 17], fov: 50, near: 0.1, far: 400 }}
+        style={{ isolation: "isolate" }}
+      >
         <color attach="background" args={[ink.page]} />
         <Scene
           idx={indexed}
@@ -100,13 +106,19 @@ export function WortraumMain() {
           onPick={setActiveEntity}
         />
       </Canvas>
-      {activeEntityId && (
-        <div className="main__overlay main__overlay--right">
-          <NeighborPanel />
-          <VolumeNote />
+      <div className="main__overlay main__overlay--right main__overlay--full">
+        <TargetPicker />
+        {activeEntityId && (
+          <>
+            <NeighborPanel />
+            <VolumeNote />
+          </>
+        )}
+        {/* Allgemeiner Hinweis, nicht an das Zielwort gebunden → unten rechts. */}
+        <div className="main__overlay-bottom">
           <ProjectionNote />
         </div>
-      )}
+      </div>
     </>
   );
 }

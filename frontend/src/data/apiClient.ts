@@ -53,6 +53,8 @@ export interface NeighborFilterInfo {
   label: string;
   description?: string;
   default: unknown;
+  /** minimum: Obergrenze des Werts (z.B. Zahl der belegten Zellen), angezeigt als „≥ 10 von 80". */
+  out_of?: number;
   /** Kandidaten ohne Wert — die bleiben bei jedem Filter drin. */
   null_count: number;
   /** categorical: vorkommende Werte, häufigste zuerst. */
@@ -98,6 +100,8 @@ export interface NeighborQueryResult {
   /** Kandidaten nach Filtern und Stoppwörtern / insgesamt (vor der Zeitscheiben-Regel). */
   n_candidates: number;
   n_candidates_total: number;
+  /** Dieselben Kandidaten als Zeilen (`candidates.row`); fehlt bei älteren Backends. */
+  kept_rows?: number[];
   /** entity_id → slice_id → Zeilennummern (`candidates.row`) und Scores, nach Rang. */
   neighbors: Record<string, Record<string, { rows: number[]; scores: number[] }>>;
 }

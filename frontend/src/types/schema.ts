@@ -29,7 +29,15 @@ export const metaSchema = z
   .object({
     name: z.string().default("Unbenanntes Bundle"),
     description: z.string().default(""),
+    // Herkunft der Daten (Korpus, Zitation, Lizenz), z.B. „Plenarprotokolle des
+    // Deutschen Bundestages (CPP-BT, Fobbe 2026, CC BY-SA 4.0)".
+    source: z.string().optional(),
     vector_dim: z.number().int().positive().optional(),
+    // PPMI-SVD: Exponent der Eigenwert-Gewichtung der Zeilenvektoren (U·S^p).
+    eig_p: z.number().optional(),
+    // Kurzname des Verfahrens (z.B. "PPMI-SVD") für knappe Anzeigen; die
+    // ausführliche Beschreibung steht in `projection`.
+    method: z.string().optional(),
     projection: z.string().optional(),
     // Zäsur (z.B. "2022Q1"); darf fehlen oder null sein (generic-Demo).
     shift_point: z.string().nullish(),
@@ -156,6 +164,8 @@ export const neighborSpaceFilterSchema = z
     label: z.string(),
     description: z.string().optional(),
     default: z.unknown().optional(),
+    // minimum: Obergrenze des Werts, angezeigt als „≥ 10 von 80".
+    out_of: z.number().optional(),
   })
   .passthrough();
 
@@ -168,6 +178,8 @@ export const neighborSpaceMetaSchema = z
     similarity: z.literal("cosine"),
     filters: z.array(neighborSpaceFilterSchema),
     stopwords: z.array(z.string()),
+    // Filterspalte mit der Häufigkeit eines Kandidaten (Schriftgröße der Wortwolke).
+    frequency: z.string().optional(),
   })
   .passthrough();
 

@@ -2,7 +2,7 @@
  * Nachbar-Filter: Filterwerte, Arbeitsliste der Stoppwörter und die Abfrage
  * beim Backend (SCHEMA.md, „meta.neighbor_space“; nextsteps.md §2).
  *
- * Es gibt genau einen Ort für diese Filter (Seite „Nachbar-Filter“), und sie
+ * Es gibt genau einen Ort für diese Filter (Seite „Filter für nächste Nachbarn“), und sie
  * wirken in allen Modulen: Das Ergebnis einer Abfrage ersetzt die Nachbarlisten
  * im indizierten Bundle (`withQueriedNeighbors`), und alle Ansichten lesen über
  * `neighborsAt()`. Gefiltert wird ausschließlich im Backend, hier wird nur
@@ -20,6 +20,7 @@ import { create } from "zustand";
 import {
   fetchNeighborSpace,
   fetchNeighbors,
+  type NeighborCandidates,
   type NeighborFilterInfo,
   type NeighborQueryBody,
   type NeighborSpaceInfo,
@@ -155,6 +156,46 @@ export function filterSummary(
   return parts;
 }
 
+export interface CloudWord {
+  lemma: string;
+  /** Wert der Häufigkeitsspalte; `null`, wenn das Bundle keine deklariert oder er fehlt. */
+  freq: number | null;
+}
+
+/**
+ * Wörter der Kandidaten-Wortwolke: die Kandidaten nach Filtern (`keptRows`),
+ * je Lemma einmal (SGNS: ein Kandidat je Zeitscheibe → größter Wert), die
+ * `limit` häufigsten, alphabetisch sortiert. Ohne Häufigkeitsspalte bleibt die
+ * Reihenfolge der Kandidatentabelle maßgeblich für die Auswahl.
+ */
+export function cloudWords(
+  candidates: Pick<NeighborCandidates, "row" | "lemma" | "attributes">,
+  keptRows: number[],
+  frequencyColumn: string | undefined,
+  limit: number,
+): CloudWord[] {
+  const posByRow = new Map<number, number>();
+  candidates.row.forEach((row, i) => posByRow.set(row, i));
+  const freqs = frequencyColumn ? candidates.attributes[frequencyColumn] : undefined;
+
+  const byLemma = new Map<string, number | null>();
+  for (const row of keptRows) {
+    const i = posByRow.get(row);
+    if (i === undefined) continue;
+    const lemma = candidates.lemma[i];
+    const raw = freqs?.[i];
+    const f = typeof raw === "number" ? raw : null;
+    const prev = byLemma.get(lemma);
+    if (prev === undefined || (f !== null && (prev === null || f > prev))) byLemma.set(lemma, f);
+  }
+
+  return [...byLemma]
+    .map(([lemma, freq]) => ({ lemma, freq }))
+    .sort((a, b) => (b.freq ?? -Infinity) - (a.freq ?? -Infinity))
+    .slice(0, limit)
+    .sort((a, b) => a.lemma.localeCompare(b.lemma, "de"));
+}
+
 // ---------------------------------------------------------------------------
 // Arbeitsliste im localStorage, je Bundle
 // ---------------------------------------------------------------------------
@@ -203,6 +244,8 @@ interface NeighborFilterState {
   queryError: string | null;
   /** Kandidaten nach Filtern / insgesamt, aus der letzten Abfrage. */
   candidateCount: { kept: number; total: number } | null;
+  /** Zeilen (`candidates.row`) der Kandidaten nach Filtern, aus der letzten Abfrage. */
+  keptRows: number[] | null;
 
   setValue: (column: string, value: unknown) => void;
   resetFilters: () => void;
@@ -233,6 +276,7 @@ export const useNeighborFilters = create<NeighborFilterState>((set, get) => ({
   queryStatus: "idle",
   queryError: null,
   candidateCount: null,
+  keptRows: null,
 
   setValue: (column, value) => {
     if (get().availability.kind !== "available") return;
@@ -303,6 +347,7 @@ async function runQuery() {
     setState({
       queryStatus: "ready",
       candidateCount: { kept: result.n_candidates, total: result.n_candidates_total },
+      keptRows: result.kept_rows ?? null,
     });
   } catch (err) {
     if (ctrl.signal.aborted || currentLoaded !== loaded) return;
@@ -310,7 +355,9 @@ async function runQuery() {
     // Listen mit Hinweis als ein altes Ergebnis, das nicht mehr zu den
     // Filtern passt.
     fallBack();
-    setState({ queryStatus: "error", queryError: (err as Error).message, candidateCount: null });
+    setState({
+      queryStatus: "error", queryError: (err as Error).message, candidateCount: null, keptRows: null,
+    });
   }
 }
 
@@ -356,6 +403,7 @@ function init(loaded: LoadedBundle | null) {
     queryStatus: "idle",
     queryError: null,
     candidateCount: null,
+    keptRows: null,
   });
   void loadSpace();
 }

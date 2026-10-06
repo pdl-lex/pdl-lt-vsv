@@ -395,5 +395,8 @@ def post_neighbors(bundle_id: str, query: NeighborQuery) -> JSONResponse:
         "k": query.k,
         "n_candidates": int(mask.sum()),
         "n_candidates_total": len(space.cand_rows),
+        # dieselben Kandidaten als Zeilen (`candidates.row`), z.B. für die
+        # Wortwolke auf der Filterseite
+        "kept_rows": space.cand_rows[mask].tolist(),
         "neighbors": neighbors,
     })

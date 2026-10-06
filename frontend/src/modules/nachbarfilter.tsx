@@ -11,6 +11,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { NeighborFilterInfo } from "../data/apiClient";
 import {
+  cloudWords,
   shippedStopwords,
   stopwordDiff,
   stopwordFileText,
@@ -47,7 +48,7 @@ export function NachbarfilterConfig() {
         <p className="prose">
           Die Nachbarn werden im Backend im vollen Vektorraum neu berechnet: nach
           rohem Kosinus, nur unter den Kandidaten, die alle Filter passieren. Die
-          Filter gelten in allen Modulen — im Nachbarn-Panel, für die Punkte im
+          Filter gelten in allen Modulen — im Panel „Nächste Nachbarn“, für die Punkte im
           Wortraum und im Nachbarschafts-Fluss.
         </p>
         <p className="prose">
@@ -79,10 +80,10 @@ export function NachbarfilterMain() {
     <div className="pane">
       <div className="pane__head">
         <div>
-          <div className="lt-eyebrow">Nachbarn</div>
-          <h2 className="pane__title">Nachbar-Filter</h2>
+          <div className="lt-eyebrow">Nächste Nachbarn</div>
+          <h2 className="pane__title">Filter für nächste Nachbarn</h2>
           <p className="pane__desc">
-            Welche Kontextwörter als Nachbarn infrage kommen. Gilt für alle Module, die
+            Welche Kontextwörter als nächste Nachbarn infrage kommen. Gilt für alle Module, die
             Nachbarn zeigen.
           </p>
         </div>
@@ -131,12 +132,23 @@ export function NachbarfilterMain() {
           </div>
           <div className="pane__grid">
             <div className="pane__col">
-              {space.filters.map((f) => (
-                <FilterCard key={f.column} filter={f} />
-              ))}
+              {space.filters
+                .filter((f) => f.type !== "exclude_if_true")
+                .map((f) => (
+                  <FilterCard key={f.column} filter={f} />
+                ))}
             </div>
-            <StopwordCard />
+            {/* rechts alles, was Wörter ausblendet: Ausschlussfilter und Stoppwörter */}
+            <div className="pane__col">
+              {space.filters
+                .filter((f) => f.type === "exclude_if_true")
+                .map((f) => (
+                  <FilterCard key={f.column} filter={f} />
+                ))}
+              <StopwordCard />
+            </div>
           </div>
+          <CandidateCloud />
         </>
       )}
     </div>
@@ -160,7 +172,7 @@ function Stat({ k, v, hint }: { k: string; v: string | number; hint?: string }) 
 function DeclaredDefaults({
   filters, stopwords,
 }: {
-  filters: { column: string; label: string; type: string; default?: unknown }[];
+  filters: { column: string; label: string; type: string; default?: unknown; out_of?: number }[];
   stopwords: string[];
 }) {
   return (
@@ -168,7 +180,7 @@ function DeclaredDefaults({
       <h3 className="card__title">Voreinstellungen der vorberechneten Nachbarn</h3>
       <dl className="deflist">
         {filters.map((f) => (
-          <FragmentRow key={f.column} k={f.label} v={describeDefault(f.type, f.default)} />
+          <FragmentRow key={f.column} k={f.label} v={describeDefault(f.type, f.default, f.out_of)} />
         ))}
         <FragmentRow k="Stoppwörter" v={stopwords.length > 0 ? stopwords.join(", ") : "keine"} />
       </dl>
@@ -185,10 +197,10 @@ function FragmentRow({ k, v }: { k: string; v: string }) {
   );
 }
 
-function describeDefault(type: string, value: unknown): string {
+function describeDefault(type: string, value: unknown, outOf?: number): string {
   if (value === null || value === undefined) return "aus";
   if (type === "categorical" && Array.isArray(value)) return value.join(", ");
-  if (type === "minimum") return `≥ ${String(value)}`;
+  if (type === "minimum") return `≥ ${String(value)}${outOf != null ? ` von ${fmt(outOf)}` : ""}`;
   if (type === "exclude_if_true") return value === true ? "ausblenden" : "aus";
   return String(value);
 }
@@ -314,6 +326,7 @@ function MinimumFilter({ filter, value, set }: FilterProps) {
             if (e.target.value.trim() !== "" && Number.isFinite(n)) set(n);
           }}
         />
+        {filter.out_of != null && <span className="nf__ge">von {fmt(filter.out_of)}</span>}
       </div>
       {filter.min != null && filter.max != null && (
         <p className="mode__hint">
@@ -335,6 +348,95 @@ function ExcludeFilter({ filter, value, set }: FilterProps) {
         <p className="mode__hint">betrifft {fmt(filter.count_true)} Kandidaten</p>
       )}
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Kandidaten-Wortwolke
+// ---------------------------------------------------------------------------
+
+const CLOUD_LIMITS = [100, 200, 500];
+const CLOUD_FONT_MIN = 11;
+const CLOUD_FONT_MAX = 28;
+
+/**
+ * Die häufigsten Kandidaten, die alle Filter passieren — welche das sind,
+ * meldet das Backend (`kept_rows`). Schriftgröße logarithmisch nach der
+ * Häufigkeitsspalte des Bundles (`neighbor_space.frequency`); × legt das
+ * Lemma auf die Stoppwortliste.
+ */
+function CandidateCloud() {
+  const { availability, space, keptRows, candidateCount, queryStatus, addStopwords } =
+    useNeighborFilters();
+  const [limit, setLimit] = useState(CLOUD_LIMITS[1]);
+
+  const freqColumn = availability.meta?.frequency;
+  const freqLabel = space?.filters.find((f) => f.column === freqColumn)?.label;
+  const words = useMemo(
+    () => (space && keptRows ? cloudWords(space.candidates, keptRows, freqColumn, limit) : []),
+    [space, keptRows, freqColumn, limit],
+  );
+
+  if (!space || !keptRows) return null;
+
+  const freqs = words.map((w) => w.freq).filter((f): f is number => f !== null && f > 0);
+  const lo = Math.log(Math.min(...freqs));
+  const hi = Math.log(Math.max(...freqs));
+  const size = (f: number | null) =>
+    f === null || f <= 0 || hi === lo
+      ? 13
+      : CLOUD_FONT_MIN + ((Math.log(f) - lo) / (hi - lo)) * (CLOUD_FONT_MAX - CLOUD_FONT_MIN);
+
+  return (
+    <section className={`card ${queryStatus === "loading" ? "nf__cloud--stale" : ""}`}>
+      <div className="nf__head">
+        <h3 className="card__title">Kandidaten</h3>
+        <label className="nf__check">
+          die häufigsten
+          <select
+            className="picker__select nf__limit"
+            value={limit}
+            onChange={(e) => setLimit(Number(e.target.value))}
+          >
+            {CLOUD_LIMITS.map((n) => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
+          {candidateCount && <>von {fmt(candidateCount.kept)}</>}
+        </label>
+      </div>
+      {words.length === 0 ? (
+        <p className="mode__hint">Kein Kandidat passiert die Filter.</p>
+      ) : (
+        <div className="nf__cloud">
+          {words.map((w) => (
+            <span
+              key={w.lemma}
+              className="nf__word"
+              style={{ fontSize: `${size(w.freq).toFixed(1)}px` }}
+              title={w.freq !== null && freqLabel ? `${freqLabel}: ${fmt(w.freq)}` : undefined}
+            >
+              {w.lemma}
+              <button
+                type="button"
+                className="nf__wordx"
+                onClick={() => addStopwords([w.lemma])}
+                title={`„${w.lemma}“ ausblenden (als Stoppwort)`}
+                aria-label={`${w.lemma} ausblenden`}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      <p className="card__note">
+        {freqColumn
+          ? `Schriftgröße nach ${freqLabel ?? freqColumn} (logarithmisch). `
+          : "Das Bundle deklariert keine Häufigkeit; alle Wörter gleich groß. "}
+        × legt das Wort auf die Stoppwortliste; rückgängig dort.
+      </p>
+    </section>
   );
 }
 
@@ -389,7 +491,7 @@ function StopwordCard() {
       </div>
       <p className="prose nf__desc">
         Abgleich über das Lemma, exakt mit Groß-/Kleinschreibung. Ergänzen auch über
-        „ausblenden“ im Nachbarn-Panel.
+        „ausblenden“ im Panel „Nächste Nachbarn“.
       </p>
 
       <div className="nf__row">

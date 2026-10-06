@@ -45,7 +45,6 @@ export function VolumeNote() {
     <div className="nn">
       <div className="nn__head">
         <span className="lt-eyebrow">Beleg</span>
-        <strong className="nn__word">{track?.entity.label ?? activeEntityId}</strong>
         <InfoTooltip text={BELEG_INFO} />
       </div>
       <p className="vol__value">

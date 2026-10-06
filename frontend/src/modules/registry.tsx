@@ -28,7 +28,8 @@ export interface ModuleDef {
   icon: IconName;
   eyebrow: string;
   title: string;
-  description: string;
+  /** Kurzbeschreibung unter dem Titel; fehlt sie, bleibt die Zeile weg. */
+  description?: string;
   Config: FC;
   Main: FC;
   /** Optionale Fußzeile über die volle Breite (nur der Wortraum hat eine). */
@@ -43,20 +44,18 @@ export const MODULES: ModuleDef[] = [
     icon: "database",
     eyebrow: "Daten",
     title: "Datenquelle",
-    description:
-      "Bundle laden und prüfen: Projektion, Zeitraum, Facetten und die Belegung je Zielwort.",
     Config: DatenConfig,
     Main: DatenMain,
   },
   {
     id: "nachbarfilter",
-    label: "Nachbar-Filter",
+    label: "Filter für nächste Nachbarn",
     group: "Daten",
     icon: "filter",
     eyebrow: "Daten",
-    title: "Nachbar-Filter",
+    title: "Filter für nächste Nachbarn",
     description:
-      "Welche Wörter als Nachbarn infrage kommen — Wortart, Mindestbelegung, Stoppwörter. Gilt in allen Modulen.",
+      "Welche Wörter als nächste Nachbarn infrage kommen — Wortart, Mindestbelegung, Stoppwörter. Gilt in allen Modulen.",
     Config: NachbarfilterConfig,
     Main: NachbarfilterMain,
   },
@@ -117,7 +116,7 @@ export const MODULES: ModuleDef[] = [
     eyebrow: "Visualisierung",
     title: "Nachbarschafts-Fluss",
     description:
-      "Top-k-Nachbarn je Zeitscheibe als Bump-Diagramm — welches Umfeld ein Wort wann hatte.",
+      "Die k nächsten Nachbarn je Zeitscheibe als Bump-Diagramm — welches Umfeld ein Wort wann hatte.",
     Config: NachbarnConfig,
     Main: NachbarnMain,
   },

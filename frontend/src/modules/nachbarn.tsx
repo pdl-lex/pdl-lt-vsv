@@ -45,7 +45,7 @@ export function NachbarnConfig() {
         </select>
         <p className="mode__hint">
           Der Fluss zeigt immer genau ein Wort — schon bei einem werden es schnell
-          viele Nachbarlinien. Auswahl gilt auch für das Nachbarn-Panel im Wortraum.
+          viele Nachbarlinien. Auswahl gilt auch für das Panel „Nächste Nachbarn“ im Wortraum.
         </p>
       </Section>
 
@@ -74,7 +74,7 @@ export function NachbarnConfig() {
         </dl>
         <p className="card__note">
           Quelle sind die Nachbarlisten je Zeitscheibe: mit Suchraum im Bundle vom
-          Backend mit den Filtern der Seite „Nachbar-Filter“ berechnet, sonst der
+          Backend mit den Filtern der Seite „Filter für nächste Nachbarn“ berechnet, sonst der
           vorberechnete <code>neighbors</code>-Block.
         </p>
       </Section>
@@ -182,7 +182,7 @@ export function NachbarnMain() {
       </section>
 
       <section className="card">
-        <h3 className="card__title">Nachbarn im Zeitraum</h3>
+        <h3 className="card__title">Nächste Nachbarn im Zeitraum</h3>
         <table className="tbl">
           <thead>
             <tr>

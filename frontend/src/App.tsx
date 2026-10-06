@@ -15,7 +15,7 @@ import { Rail } from "./ui/Rail";
 import { StatusBar } from "./ui/StatusBar";
 
 export default function App() {
-  const { indexed, error } = useViz();
+  const { error } = useViz();
   const activeId = useWorkbench((s) => s.activeId);
   const railPinned = useWorkbench((s) => s.railPinned);
   const mod = moduleById(activeId);
@@ -30,13 +30,8 @@ export default function App() {
           <div className="lt-eyebrow">{mod.eyebrow}</div>
           <div className="cfg__moduletitle">
             <h1>{mod.title}</h1>
-            {indexed && (
-              <span className="cfg__moduletag lt-mono">
-                {indexed.bundle.meta.projection ?? "—"} · dim {indexed.bundle.meta.vector_dim ?? "?"}
-              </span>
-            )}
           </div>
-          <p className="cfg__moduledesc">{mod.description}</p>
+          {mod.description && <p className="cfg__moduledesc">{mod.description}</p>}
         </div>
 
         <div className="cfg__scroll">

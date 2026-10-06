@@ -1,7 +1,7 @@
 /**
  * Kurzanzeige, woher die gezeigten Nachbarn stammen und welche Filter wirken —
  * in jedem Modul, das Nachbarn zeigt (Nachvollziehbarkeit, nextsteps.md §2).
- * Ein Klick führt zur Seite „Nachbar-Filter“, dem einzigen Ort, an dem sich die
+ * Ein Klick führt zur Seite „Filter für nächste Nachbarn“, dem einzigen Ort, an dem sich die
  * Filter ändern lassen.
  */
 import { useViz } from "../state/store";
@@ -33,15 +33,17 @@ export function useNeighborSourceText(): { text: string; warn: boolean } {
   };
 }
 
-export function NeighborFilterNote() {
+/** `short`: in engen Overlay-Karten nur „Filter aktiv“; der volle Text steht im Tooltip. */
+export function NeighborFilterNote({ short = false }: { short?: boolean }) {
   const setActiveId = useWorkbench((s) => s.setActiveId);
-  const { text, warn } = useNeighborSourceText();
+  const { text: full, warn } = useNeighborSourceText();
+  const text = short && full.startsWith("gefiltert:") ? "Filter aktiv" : full;
   return (
     <button
       type="button"
       className={`nfnote ${warn ? "nfnote--warn" : ""}`}
       onClick={() => setActiveId("nachbarfilter")}
-      title="Filter ändern: Seite „Nachbar-Filter“"
+      title={`${short ? `${full}\n\n` : ""}Filter ändern: Seite „Filter für nächste Nachbarn“`}
     >
       <Icon name="filter" size={11} />
       <span>{text}</span>

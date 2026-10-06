@@ -14,6 +14,7 @@ import type { LoadedBundle } from "../data/loader";
 import type { NeighborCandidates, NeighborQueryResult } from "../data/apiClient";
 import { buildNeighborFlow } from "../viz/neighborFlow";
 import {
+  cloudWords,
   addStopwords,
   availabilityOf,
   buildQueryBody,
@@ -179,5 +180,32 @@ describe("Stoppwortliste", () => {
 
   it("zeigt den Unterschied zur mitgelieferten Liste", () => {
     expect(stopwordDiff(["Herr", "machen"], ["Herr", "sagen"])).toEqual({ added: ["machen"], removed: ["sagen"] });
+  });
+});
+
+describe("cloudWords", () => {
+  const cands = {
+    row: [10, 11, 12, 13, 14],
+    lemma: ["Krieg", "Frieden", "Krieg", "Armee", "Panzer"],
+    attributes: { n: [5, 30, 12, null, 8] as unknown[] },
+  };
+
+  it("nimmt nur verbleibende Kandidaten, je Lemma den größten Wert, die häufigsten, alphabetisch", () => {
+    expect(cloudWords(cands, [10, 11, 12, 13, 14], "n", 3)).toEqual([
+      { lemma: "Frieden", freq: 30 },
+      { lemma: "Krieg", freq: 12 },
+      { lemma: "Panzer", freq: 8 },
+    ]);
+    expect(cloudWords(cands, [10, 13], "n", 10)).toEqual([
+      { lemma: "Armee", freq: null },
+      { lemma: "Krieg", freq: 5 },
+    ]);
+  });
+
+  it("ohne Häufigkeitsspalte: alle gleich, keine Werte", () => {
+    expect(cloudWords(cands, [11, 14], undefined, 10)).toEqual([
+      { lemma: "Frieden", freq: null },
+      { lemma: "Panzer", freq: null },
+    ]);
   });
 });

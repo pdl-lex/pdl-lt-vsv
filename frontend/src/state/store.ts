@@ -17,7 +17,9 @@ export type ViewMode = "aggregat" | "facettiert" | "streuung";
 /** Startlänge der Nachbarliste. 8 war bis zur Umstellung auf lange Listen die
  * fest im Bundle stehende Zahl — als Startwert bleibt die Ansicht damit
  * vertraut, und ältere Bundles (die genau 8 liefern) verhalten sich unverändert. */
-export const NEIGHBOR_K_DEFAULT = 8;
+export const NEIGHBOR_K_DEFAULT = 10;
+/** Obergrenze des k-Reglers, unabhängig von der Listenlänge (bis 1000). */
+export const NEIGHBOR_K_MAX = 100;
 
 interface VizState {
   // Bundle-Liste (Backend)
@@ -42,6 +44,10 @@ interface VizState {
    * Reihenfolge kommen aus dem Bundle, hier wird nur abgeschnitten. */
   neighborK: number;
 
+  /** Ausgeblendete Anker-Cluster (Wortraum). Als NN hervorgehobene Anker
+   * bleiben trotzdem sichtbar, sonst fehlte ein Teil der Nachbarliste im Bild. */
+  hiddenClusters: Set<string>;
+
   // Facetten
   viewMode: ViewMode;
   /** Aktive Facetten-Filter: facetId → Menge erlaubter Wert-IDs (leer = alle). */
@@ -55,6 +61,7 @@ interface VizState {
   setActiveEntity: (id: string | null) => void;
   toggleEntity: (id: string) => void;
   setNeighborK: (k: number) => void;
+  toggleCluster: (cluster: string) => void;
   setViewMode: (mode: ViewMode) => void;
   toggleFacetValue: (facetId: string, valueId: string) => void;
   clearFacet: (facetId: string) => void;
@@ -76,6 +83,7 @@ function applyLoaded(loaded: LoadedBundle) {
     // Frisches Bundle: zurück auf Aggregiert, keine Filter.
     viewMode: "aggregat" as ViewMode,
     facetFilters: {} as Record<string, Set<string>>,
+    hiddenClusters: new Set<string>(),
     // Startwert ist die klassische Panel-Länge: ein frisches Bundle sieht aus
     // wie bisher, mehr Nachbarn holt man sich bewusst über den Regler.
     neighborK: Math.min(NEIGHBOR_K_DEFAULT, indexed.maxNeighborK || NEIGHBOR_K_DEFAULT),
@@ -93,6 +101,7 @@ export const useViz = create<VizState>((set, get) => ({
   selectedEntityIds: new Set(),
   activeEntityId: null,
   neighborK: NEIGHBOR_K_DEFAULT,
+  hiddenClusters: new Set(),
   viewMode: "aggregat",
   facetFilters: {},
 
@@ -131,14 +140,30 @@ export const useViz = create<VizState>((set, get) => ({
   setActiveEntity: (id) => set({ activeEntityId: id }),
   setNeighborK: (k) =>
     set((s) => ({
-      neighborK: Math.max(0, Math.min(Math.round(k), s.indexed?.maxNeighborK ?? k)),
+      neighborK: Math.max(
+        0,
+        Math.min(Math.round(k), NEIGHBOR_K_MAX, s.indexed?.maxNeighborK ?? NEIGHBOR_K_MAX),
+      ),
     })),
+  toggleCluster: (cluster) =>
+    set((s) => {
+      const next = new Set(s.hiddenClusters);
+      if (next.has(cluster)) next.delete(cluster);
+      else next.add(cluster);
+      return { hiddenClusters: next };
+    }),
   toggleEntity: (id) =>
     set((s) => {
       const next = new Set(s.selectedEntityIds);
       if (next.has(id)) next.delete(id);
       else next.add(id);
-      return { selectedEntityIds: next };
+      // Das aktive Zielwort (Overlay „Zielwort“) bleibt immer ein eingeblendetes:
+      // wird es ausgeblendet, rückt das erste verbliebene nach.
+      let active = s.activeEntityId;
+      if (active === null || !next.has(active)) {
+        active = s.indexed?.tracks.find((t) => next.has(t.entity.id))?.entity.id ?? null;
+      }
+      return { selectedEntityIds: next, activeEntityId: active };
     }),
 
   setViewMode: (mode) => set({ viewMode: mode }),

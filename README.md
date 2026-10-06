@@ -19,12 +19,12 @@ Modulwechsel verliert weder Auswahl noch Zeitposition.
 | Modul | Was es zeigt |
 |---|---|
 | **Datenquelle** | Bundle laden und prüfen: Projektion, Zeitraum, Facetten, Belegung je Zielwort |
-| **Nachbar-Filter** | Welche Wörter als Nachbarn infrage kommen (Wortart, Mindestbelegung, Stoppwörter …); gilt in allen Modulen |
+| **Filter für nächste Nachbarn** | Welche Wörter als Nachbarn infrage kommen (Wortart, Mindestbelegung, Stoppwörter …); gilt in allen Modulen |
 | **Wortraum (3D)** | Trajektorien durch den gemeinsamen Vektorraum, Zeit als Achse |
 | **Ähnlichkeitsmatrizen** | T×T-Selbstähnlichkeit je Zielwort (Kiyama) |
 | **Drift-Kurven** | Abstand zu einem Bezugszeitpunkt über die Zeit (Hamilton) |
 | **Wort gegen Wort** | Kreuzähnlichkeit zweier Zielwörter je Zeitscheibe |
-| **Nachbarschafts-Fluss** | Top-k-Nachbarn je Zeitscheibe als Bump-Diagramm |
+| **Nachbarschafts-Fluss** | Die k nächsten Nachbarn je Zeitscheibe als Bump-Diagramm |
 
 ### Datenquelle
 
@@ -66,7 +66,7 @@ Modulwechsel verliert weder Auswahl noch Zeitposition.
     Facette → Quellenunterschiede werden sichtbar.
   - **Streuung** – facettenaufgelöste Punktwolke je Wort (Unsicherheit/Konsens).
 
-### Nachbar-Filter
+### Filter für nächste Nachbarn
 
 Eine Seite, auf der festgelegt wird, welche Wörter als Nachbarn infrage kommen.
 Die Filter wirken in allen Modulen: Nachbarn-Panel, Punkte im Wortraum,
@@ -134,11 +134,11 @@ dasselbe „aktive Wort" wie im Wortraum.
 
 ### Nachbarschafts-Fluss
 
-Bump-Diagramm der Top-k-Nachbarn: x = Zeit, y = Rang, eine Linie je Nachbarwort.
+Bump-Diagramm der k nächsten Nachbarn: x = Zeit, y = Rang, eine Linie je Nachbarwort.
 Die Ansicht, die eine gemessene Verschiebung **in Wörter übersetzt**.
 
 - **Zahl der Rangplätze = Regler „Nachbarn“** (derselbe wie im Wortraum,
-  Standard 8); die Filter der Seite „Nachbar-Filter“ gelten auch hier.
+  Standard 8); die Filter der Seite „Filter für nächste Nachbarn“ gelten auch hier.
 - **Farbe steht für die Nachbar-Gruppe**, nicht für das einzelne Wort — bei
   vielen Nachbarn trennt keine Palette alle Serien, und der Befund ist ohnehin,
   welche *Art* Umfeld welche ablöst. Die Wortidentität trägt die

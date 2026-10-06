@@ -18,32 +18,10 @@ import { Section } from "../ui/Section";
 import { Icon } from "../design/icons";
 
 export function DatenConfig() {
-  const { indexed } = useViz();
   return (
-    <>
-      <Section title="Datenquelle" icon="file">
-        <BundlePicker />
-      </Section>
-      {indexed && (
-        <Section title="Datenvertrag" icon="info" defaultOpen={false}>
-          <p className="prose">
-            Jedes Bundle läuft durch dieselbe Schema-Prüfung — egal ob vom Backend
-            oder per Drag-and-Drop. Der Explorer kennt keine Domäne: Zielwörter,
-            Zeitscheiben und Facetten kommen ausschließlich aus der Datei.
-          </p>
-        </Section>
-      )}
-    </>
-  );
-}
-
-/** Kennzahl-Kachel im Kopf der Übersicht. */
-function Stat({ k, v, hint }: { k: string; v: string | number; hint?: string }) {
-  return (
-    <div className="stat" title={hint}>
-      <div className="stat__k">{k}</div>
-      <div className="stat__v lt-mono">{v}</div>
-    </div>
+    <Section title="Datenquelle" icon="file">
+      <BundlePicker />
+    </Section>
   );
 }
 
@@ -94,82 +72,87 @@ export function DatenMain() {
         <div>
           <div className="lt-eyebrow">Bundle</div>
           <h2 className="pane__title">{meta.name}</h2>
-          {meta.description && <p className="pane__desc">{meta.description}</p>}
         </div>
       </div>
 
-      <div className="stats">
-        <Stat k="Quelle" v={source} />
-        <Stat k="Zielwörter" v={bundle.entities.length} />
-        <Stat k="Zeitscheiben" v={sliceCount} />
-        <Stat
-          k="Zeitraum"
-          v={`${first?.label ?? first?.id ?? "—"} – ${last?.label ?? last?.id ?? "—"}`}
-        />
-        <Stat k="Anker" v={bundle.anchors.length} />
-        <Stat k="Facetten" v={bundle.facets_schema.length} />
-        <Stat k="Dimension" v={meta.vector_dim ?? "?"} hint="Länge der vollen Vektoren" />
-        <Stat k="Zellen" v={`${bundle.aggregates.length} + ${bundle.records.length}`}
-          hint="Aggregate + facettenaufgelöste Records" />
-      </div>
-
       <div className="pane__grid">
-        <section className="card">
-          <h3 className="card__title">Zielwörter</h3>
-          <table className="tbl">
-            <thead>
-              <tr>
-                <th>Wort</th>
-                <th>Kategorie</th>
-                <th className="tbl__num">Belegung</th>
-              </tr>
-            </thead>
-            <tbody>
-              {indexed.tracks.map((t, i) => {
-                const filled = t.samples.reduce((n, s) => n + (s && s.freq > 0 ? 1 : 0), 0);
-                return (
-                  <tr key={t.entity.id}>
-                    <td>
-                      <span className="tbl__word">
-                        <span className="swatch" style={{ background: entityColor(i, mode) }} />
-                        <span title={t.entity.note ?? ""}>{t.entity.label ?? t.entity.id}</span>
-                      </span>
-                    </td>
-                    <td className="tbl__muted">{t.entity.category ?? "—"}</td>
-                    <td className="tbl__num">
-                      <Coverage filled={filled} total={sliceCount} />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          <p className="card__note">
-            Belegung = Zeitscheiben mit <code>freq &gt; 0</code>. Leere Zellen werden
-            überall konsequent ausgespart: Trajektorien setzen aus, Matrixfelder
-            bleiben schraffiert. Ein Wort mit geringer Belegung ist keine schwache
-            Visualisierung, sondern ein dünner Korpus.
-          </p>
-        </section>
-
         <div className="pane__col">
+          <section className="card">
+            <h3 className="card__title">Quelle</h3>
+            <dl className="deflist">
+              <dt>Korpus</dt>
+              <dd>{meta.source ?? "—"}</dd>
+              <dt>Zeitraum</dt>
+              <dd className="lt-mono">
+                {first?.label ?? first?.id ?? "—"} – {last?.label ?? last?.id ?? "—"}
+              </dd>
+              <dt>Facetten</dt>
+              <dd className="lt-mono">{bundle.facets_schema.length}</dd>
+            </dl>
+          </section>
+
+          <section className="card">
+            <h3 className="card__title">Parameter</h3>
+            <dl className="deflist">
+              <dt>Bundle</dt>
+              <dd className="lt-mono deflist__clip" title={source}>{source}</dd>
+              <dt>Zielwörter</dt>
+              <dd className="lt-mono">{bundle.entities.length}</dd>
+              <dt>Zeitscheiben</dt>
+              <dd className="lt-mono">{sliceCount}</dd>
+              <dt>Anker</dt>
+              <dd className="lt-mono">{bundle.anchors.length}</dd>
+              <dt>Zellen</dt>
+              <dd className="lt-mono">
+                {bundle.aggregates.length} von {bundle.entities.length * sliceCount}
+              </dd>
+              {bundle.facets_schema.length > 0 && (
+                <>
+                  <dt>Facetten-Zellen</dt>
+                  <dd className="lt-mono">{bundle.records.length}</dd>
+                </>
+              )}
+              {meta.eig_p != null && (
+                <>
+                  <dt title="Gewichtung der Zeilenvektoren U·S^p nach der SVD">p (U·Sᵖ)</dt>
+                  <dd className="lt-mono">{meta.eig_p}</dd>
+                </>
+              )}
+              <dt title="Anteil der Varianz der vollen Vektoren, den die 3D-Ansicht abbildet">
+                Erklärte Varianz (3D)
+              </dt>
+              <dd className="lt-mono">
+                {meta.explained_variance_ratio_3d != null
+                  ? `${(meta.explained_variance_ratio_3d * 100).toFixed(1)} %`
+                  : "—"}
+              </dd>
+            </dl>
+            <p className="card__note">
+              Zellen = Kombinationen aus Zielwort und Zeitscheibe, für die das Bundle
+              einen Vektor liefert ({bundle.entities.length} Wörter × {sliceCount}{" "}
+              Scheiben möglich; leer, wo das Wort im Korpus nicht vorkommt).
+              {bundle.facets_schema.length > 0 &&
+                " Facetten-Zellen schlüsseln dieselben Zellen zusätzlich nach Facettenwert auf."}
+            </p>
+          </section>
+
           <section className="card">
             <h3 className="card__title">Projektion</h3>
             <dl className="deflist">
               <dt>Verfahren</dt>
               <dd>{meta.projection ?? "—"}</dd>
               <dt>Vektordimension</dt>
-              <dd className="lt-mono">{meta.vector_dim ?? "?"}</dd>
+              <dd className="lt-mono">{meta.vector_dim ?? "?"} (nach SVD)</dd>
               <dt>Zäsur</dt>
               <dd className="lt-mono">{meta.shift_point ?? "keine"}</dd>
-              <dt>Ähnlichkeit rechnet auf</dt>
+              <dt>Ähnlichkeiten berechnet auf</dt>
               <dd>
                 {simSource === "vector" ? (
-                  <span className="lt-mono">vector (voll)</span>
+                  <>volle Vektoren ({meta.vector_dim ?? "?"} Dim.), nicht der 3D-Ansicht</>
                 ) : (
                   <span className="warnnote">
                     <Icon name="info" size={12} />
-                    coords_3d — Rückfall, das Bundle liefert keine vollen Vektoren
+                    3D-Koordinaten — Rückfall, das Bundle liefert keine vollen Vektoren
                   </span>
                 )}
               </dd>
@@ -196,6 +179,46 @@ export function DatenMain() {
               ))}
             </section>
           )}
+        </div>
+
+        <div className="pane__col">
+          <section className="card">
+            <h3 className="card__title">Zielwörter</h3>
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th>Wort</th>
+                  <th>Kategorie</th>
+                  <th className="tbl__num">Belegung</th>
+                </tr>
+              </thead>
+              <tbody>
+                {indexed.tracks.map((t, i) => {
+                  const filled = t.samples.reduce((n, s) => n + (s && s.freq > 0 ? 1 : 0), 0);
+                  return (
+                    <tr key={t.entity.id}>
+                      <td>
+                        <span className="tbl__word">
+                          <span className="swatch" style={{ background: entityColor(i, mode) }} />
+                          <span title={t.entity.note ?? ""}>{t.entity.label ?? t.entity.id}</span>
+                        </span>
+                      </td>
+                      <td className="tbl__muted">{t.entity.category ?? "—"}</td>
+                      <td className="tbl__num">
+                        <Coverage filled={filled} total={sliceCount} />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <p className="card__note">
+              Belegung = Zeitscheiben mit <code>freq &gt; 0</code>. Leere Zellen werden
+              überall konsequent ausgespart: Trajektorien setzen aus, Matrixfelder
+              bleiben schraffiert. Ein Wort mit geringer Belegung ist keine schwache
+              Visualisierung, sondern ein dünner Korpus.
+            </p>
+          </section>
 
           <section className="card">
             <h3 className="card__title">Weiter zu</h3>
@@ -232,7 +255,7 @@ export function DatenMain() {
                 <Icon name="flow" size={15} />
                 <span>
                   <strong>Nachbarschafts-Fluss</strong>
-                  <em>Top-k-Nachbarn je Zeitscheibe als Bump-Diagramm</em>
+                  <em>Die k nächsten Nachbarn je Zeitscheibe als Bump-Diagramm</em>
                 </span>
               </button>
             </div>

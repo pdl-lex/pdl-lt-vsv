@@ -72,6 +72,11 @@ def test_candidate_counts(client):
     body = client.post("/bundles/mini/neighbors", json={"k": 1}).json()
     # Voreinstellungen: Alpha, Beta, Gamma, Zeta, Theta (Eta, Delta, Eps, Stop fallen weg)
     assert (body["n_candidates"], body["n_candidates_total"]) == (5, 9)
+    space = client.get("/bundles/mini/neighbor-space").json()["candidates"]
+    lemma_by_row = dict(zip(space["row"], space["lemma"]))
+    kept = {lemma_by_row[r] for r in body["kept_rows"]}
+    assert len(body["kept_rows"]) == 5
+    assert {"Eta", "Delta", "Eps", "Stop"}.isdisjoint(kept)
 
 
 def test_scores_rounded_and_rows_global(client):

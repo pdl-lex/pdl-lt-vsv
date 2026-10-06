@@ -15,10 +15,10 @@ import { neighborPointsAt } from "./neighborPointsData";
 import type { IndexedBundle } from "../data/model";
 import { INK, type Mode } from "./theme";
 
-/** Lesbarkeitsgrenze fürs Bild, unabhängig vom gewählten k: mehr beschriftete
- * Punkte überlagern sich im Raum zu Unlesbarkeit. Wer mehr sehen will, liest
- * die Liste im Nachbarn-Panel, die bis k geht. */
-export const MAX_RENDERED = 40;
+/** Sicherheitsgrenze fürs Bild; entspricht dem Maximum des k-Reglers
+ * (`NEIGHBOR_K_MAX`), damit der Regler hält, was er anzeigt. Die ganze Liste
+ * steht im Modal des Nachbarn-Panels. */
+export const MAX_RENDERED = 100;
 
 interface Props {
   idx: IndexedBundle;

@@ -13,7 +13,7 @@ Zwei Beispiel-Bundles liegen bei:
 
 | Feld | Typ | Zweck |
 |---|---|---|
-| `meta` | object | Name, Beschreibung, `vector_dim`, Projektionsverfahren, `shift_point`, erklärte Varianz (s.u.), optional `neighbor_space` (Suchraum für Nachbarabfragen, s.u.) |
+| `meta` | object | Name, Beschreibung, optional `source` (Herkunft: Korpus, Zitation, Lizenz — im Explorer als „Quelle" angezeigt), `vector_dim`, optional `eig_p` (PPMI-SVD: Gewichtung der Zeilenvektoren U·S^p), optional `method` (Kurzname des Verfahrens, z.B. „PPMI-SVD“; Statuszeile), Projektionsverfahren, `shift_point`, erklärte Varianz (s.u.), optional `neighbor_space` (Suchraum für Nachbarabfragen, s.u.) |
 | `facets_schema` | array | Deklariert die Facetten-Achsen (Publikation, Region, Sprecher …) |
 | `entities` | array | Die Zielwörter (das, was sich über die Zeit bewegt) |
 | `time_slices` | array | Zeitscheiben in Reihenfolge (`index`) |
@@ -249,6 +249,7 @@ Filtertyp ist eine Formatänderung (neue Formatversion).
 | `similarity` | ja | In Format 1 nur `cosine`. |
 | `filters` | ja | Deklaration der angebotenen Filter, Reihenfolge = Anzeigereihenfolge. Kann leer sein. |
 | `stopwords` | ja | Mitgelieferte Stoppwortliste (Lemmata). Kann leer sein. |
+| `frequency` | nein | Spalte (eine der Filterspalten vom Typ `minimum`), die die Häufigkeit eines Kandidaten angibt. Bestimmt die Schriftgröße in der Wortwolke der Filterseite; fehlt das Feld, sind alle Wörter gleich groß. |
 
 Ein Filtereintrag hat `column` (Spalte der Indextabelle), `type` (s. u.),
 `label` (Anzeigetext), optional `description` und `default` (Voreinstellung,
@@ -292,6 +293,10 @@ Die Filterwerte einer Abfrage kommen vom Nutzer; fehlt ein Wert, gilt
 | `categorical` | Liste von Strings | sein Wert in der Liste steht. Leere Liste: kein Kandidat bleibt. | String |
 | `minimum` | Zahl | sein Wert ≥ dem Filterwert ist | Zahl |
 | `exclude_if_true` | Boolean | `true`: sein Wert nicht `true` ist; `false`: Filter nicht aktiv | Boolean |
+
+Optional bei `minimum`: `out_of` (Zahl), die Obergrenze des Werts. Die
+Oberfläche zeigt den Filter dann als „≥ 10 von 80“ (PPMI: Zahl der belegten
+Zellen Zielwort × Zeitscheibe, also der Zeilen der PPMI-Matrix).
 
 **Fehlende Attributwerte** (`null` in der Spalte): Der Kandidat bleibt drin,
 unabhängig vom Filter. (Vorläufige Festlegung, 2026-10-06.)
