@@ -1,0 +1,18 @@
+# Build-Context klein halten; Bundles kommen als Volume, nicht ins Image.
+.git
+.gitignore
+.gitattributes
+.claude
+.vscode
+specs
+docs
+README.md
+CLAUDE.md
+start.txt
+**/__pycache__
+backend/.venv
+backend/bundles
+backend/tests
+backend/*.egg-info
+frontend/node_modules
+frontend/dist

@@ -5,9 +5,8 @@
  * richtig einsetzt.
  */
 import { describe, it, expect } from "vitest";
+import { fixturePath } from "../test/fixtures";
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
 import { validateBundle } from "../types/schema";
 import { indexBundle, neighborsAt, pointForLabel, withBundleNeighbors, withQueriedNeighbors } from "../data/model";
 import type { LoadedBundle } from "../data/loader";
@@ -25,9 +24,8 @@ import {
   stopwordFileText,
 } from "./neighborFilters";
 
-const here = dirname(fileURLToPath(import.meta.url));
 const raw = () =>
-  JSON.parse(readFileSync(resolve(here, "../../../data/test/zeitenwende_demo.json"), "utf-8"));
+  JSON.parse(readFileSync(fixturePath("zeitenwende_demo.json"), "utf-8"));
 
 const NEIGHBOR_SPACE = {
   format: 1,

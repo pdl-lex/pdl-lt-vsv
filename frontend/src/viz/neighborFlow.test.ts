@@ -8,18 +8,15 @@
  * unten ist genau dagegen gerichtet.
  */
 import { describe, it, expect } from "vitest";
+import { fixturePath } from "../test/fixtures";
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
 import { validateBundle } from "../types/schema";
 import { indexBundle } from "../data/model";
 import { buildNeighborFlow, neighborGroups } from "./neighborFlow";
 
-const here = dirname(fileURLToPath(import.meta.url));
-const dataDir = resolve(here, "../../../data/test");
 
 function indexed(name: string) {
-  return indexBundle(validateBundle(JSON.parse(readFileSync(resolve(dataDir, name), "utf-8"))));
+  return indexBundle(validateBundle(JSON.parse(readFileSync(fixturePath(name), "utf-8"))));
 }
 
 describe("buildNeighborFlow", () => {

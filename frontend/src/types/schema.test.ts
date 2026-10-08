@@ -4,17 +4,14 @@
  * oder die Beispieldaten sind aus dem Vertrag gelaufen.
  */
 import { describe, it, expect } from "vitest";
+import { fixturePath } from "../test/fixtures";
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
 import { validateBundle, bundleSchema } from "./schema";
 import { indexBundle, passesFacetFilter, facetKeyOf } from "../data/model";
 
-const here = dirname(fileURLToPath(import.meta.url));
-const dataDir = resolve(here, "../../../data/test");
 
 function load(name: string): unknown {
-  return JSON.parse(readFileSync(resolve(dataDir, name), "utf-8"));
+  return JSON.parse(readFileSync(fixturePath(name), "utf-8"));
 }
 
 describe("Datenvertrag gegen Demo-Bundles", () => {

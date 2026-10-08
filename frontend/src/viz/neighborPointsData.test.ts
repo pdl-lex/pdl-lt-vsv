@@ -5,18 +5,15 @@
  * Vokabel-Punkte (wird hier gezielt injiziert).
  */
 import { describe, it, expect } from "vitest";
+import { fixturePath } from "../test/fixtures";
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
 import { validateBundle } from "../types/schema";
 import { indexBundle, pointForLabel, toWorld } from "../data/model";
 import { neighborPointsAt } from "./neighborPointsData";
 
-const here = dirname(fileURLToPath(import.meta.url));
-const dataDir = resolve(here, "../../../data/test");
 
 function loadRaw(name: string) {
-  return JSON.parse(readFileSync(resolve(dataDir, name), "utf-8"));
+  return JSON.parse(readFileSync(fixturePath(name), "utf-8"));
 }
 
 function withVocabPoints(

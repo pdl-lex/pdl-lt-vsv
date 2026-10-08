@@ -1,7 +1,7 @@
 /**
  * Datenvertrag zwischen Datenproduktion und Visualisierungstool.
  *
- * Direkt aus `data/test/SCHEMA.md` abgeleitet und die einzige Quelle der Wahrheit
+ * Direkt aus `docs/SCHEMA.md` abgeleitet und die einzige Quelle der Wahrheit
  * für die Form eines Bundles. Jedes geladene Bundle – egal ob vom Backend oder
  * per Drag-and-Drop – läuft durch `validateBundle()`. Das ist der Kern der
  * Domänenunabhängigkeit: der Renderer kennt nur Entities, Zeitscheiben, Facetten

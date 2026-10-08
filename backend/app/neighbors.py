@@ -1,7 +1,7 @@
 """Nachbarabfragen über den Suchraum eines Bundles (`meta.neighbor_space`).
 
 Setzt den normativen Abschnitt „`meta.neighbor_space` – Suchraum für
-Nachbarabfragen (Format 1)“ aus `data/test/SCHEMA.md` um. Das Modul kennt keine
+Nachbarabfragen (Format 1)“ aus `docs/SCHEMA.md` um. Das Modul kennt keine
 Domäne und keine Pipeline: Welche Filter es gibt und mit welchen
 Voreinstellungen, steht in der Deklaration des Bundles; wie sie wirken, legt das
 Schema fest. Die Pipeline rechnet die mitgelieferten `neighbors` nach derselben

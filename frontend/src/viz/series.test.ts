@@ -11,19 +11,16 @@
  *    (`baselineMissing`) statt still auf etwas anderes auszuweichen.
  */
 import { describe, it, expect } from "vitest";
+import { fixturePath } from "../test/fixtures";
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
 import { validateBundle } from "../types/schema";
 import { indexBundle } from "../data/model";
 import { buildSimilarityMatrix } from "./similarity";
 import { buildDriftSeries, buildPairSeries, firstPresentIndex, seriesDomain } from "./series";
 
-const here = dirname(fileURLToPath(import.meta.url));
-const dataDir = resolve(here, "../../../data/test");
 
 function indexed(name: string) {
-  return indexBundle(validateBundle(JSON.parse(readFileSync(resolve(dataDir, name), "utf-8"))));
+  return indexBundle(validateBundle(JSON.parse(readFileSync(fixturePath(name), "utf-8"))));
 }
 
 /** `zeitenwende` ist das einzige teilbelegte Zielwort der Demo (21 von 64

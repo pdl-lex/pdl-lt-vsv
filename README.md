@@ -3,9 +3,9 @@ Visualisierungstool für **diachrone Vektor-Datensätze** – im Geist des Tenso
 Projectors, aber mit der **Zeit als wichtigster Achse**. Primärer Anwendungsfall
 ist das DNB-Zeitenwende-Projekt (Wandel deutschen Militär-/Verteidigungsvokabulars
 2010–2025); das Tool ist aber **domänenunabhängig** und rendert jeden Datensatz im
-vereinbarten Bundle-Schema (siehe [`data/test/SCHEMA.md`](data/test/SCHEMA.md)).
+vereinbarten Bundle-Schema (siehe [`docs/SCHEMA.md`](docs/SCHEMA.md)).
 
-Wie die Daten aussehen müssen: [`data/test/SCHEMA.md`](data/test/SCHEMA.md),
+Wie die Daten aussehen müssen: [`docs/SCHEMA.md`](docs/SCHEMA.md),
 einschließlich des Suchraums für Nachbarabfragen (`meta.neighbor_space`). Die
 Datengenerierung liegt im separaten Repo `pdl-lt-vsv-pipeline`; dort beschreibt
 `internal/Readme Datenmodell.md`, was jede Visualisierung aus den Daten rechnet.
@@ -25,6 +25,7 @@ Modulwechsel verliert weder Auswahl noch Zeitposition.
 | **Drift-Kurven** | Abstand zu einem Bezugszeitpunkt über die Zeit (Hamilton) |
 | **Wort gegen Wort** | Kreuzähnlichkeit zweier Zielwörter je Zeitscheibe |
 | **Nachbarschafts-Fluss** | Die k nächsten Nachbarn je Zeitscheibe als Bump-Diagramm |
+| **Wandel-Ranking** | Welches Wort hat zwischen zwei Zeiträumen seine Nachbarn am stärksten gewechselt (Gonen) |
 
 ### Datenquelle
 
@@ -106,6 +107,9 @@ Wort gewandert ist; die Matrix zeigt, *wie* — Bruch, stetige Drift oder Rückk
   vergleichbar, je Matrix macht die Binnenstruktur maximal sichtbar.
 - Die **Zäsur** (`meta.shift_point`) liegt als Hilfslinie auf beiden Achsen —
   damit prüfbar ist, ob ein Blockwechsel wirklich dort sitzt.
+- **Metrik umschaltbar: Kosinus ↔ Nachbarschafts-Überlappung** (siehe unten).
+  Klick auf eine Zelle der Detailansicht zeigt die Nachbarn beider Zeitscheiben
+  als gemeinsame, weggefallene und hinzugekommene.
 
 ### Drift-Kurven (Hamilton)
 
@@ -123,6 +127,48 @@ und damit ablesbar statt nur sichtbar.
 - Die Achse ist bei 0 verankert: Distanz 0 heißt „identisch mit dem Bezugspunkt"
   und ist ein echter Nullpunkt.
 - Kennzahlentabelle: Drift zuletzt und stärkste Drift mit Zeitpunkt.
+- **Metrik umschaltbar**: bei „Überlappung" ist die Kurve `1 − Überlappung`
+  statt `1 − cos`.
+
+### Nachbarschafts-Überlappung (Gonen)
+
+Statt zwei Vektoren desselben Worts zu vergleichen, vergleicht diese Metrik seine
+Top-k-Nachbarlisten: `overlap@k(tᵢ, tⱼ) = |NN_k(tᵢ) ∩ NN_k(tⱼ)| / k`
+(Gonen et al., „Simple, Interpretable and Stable Method for Detecting Words with
+Usage Change across Corpora", ACL 2020). Wenige gemeinsame Nachbarn = veränderter
+Gebrauch.
+
+- **Ergänzung zum Kosinus, nicht Ersatz.** Es wird kein Vektor über Zeitscheiben
+  hinweg verglichen; jede Liste entsteht innerhalb ihrer Scheibe. Was am Vektor
+  verzerrt ist (z. B. eine SVD-Achse, die nur eine Scheibe beschreibt), schlägt
+  hier anders durch – weichen beide Maße stark voneinander ab, lohnt der Blick
+  auf die Nachbarn.
+- **Erklärbar:** zu jeder Zahl gibt es die Liste der gemeinsamen, weggefallenen
+  und hinzugekommenen Nachbarn.
+- **Ein gemeinsamer Schalter** „Metrik" in Matrizen und Drift (ein Store): die
+  Drift-Kurve ist eine Zeile der Matrix, beide zeigen dieselbe Zahl. Dazu der
+  Regler **k** (Standard 100, höchstens die Länge der Listen); geteilt wird durch
+  die kürzere Liste, damit Identität auch bei kurzen Listen 1 ergibt.
+- **Grundlage sind die gefilterten Nachbarlisten** (Seite „Filter für nächste
+  Nachbarn"). `freq == 0` bleibt „nicht belegt": die Zelle ist leer, nicht 0.
+
+### Wandel-Ranking
+
+Die Frage ist hier nicht *wie* (Matrix) oder *wann* (Drift), sondern *welches
+Wort* sich zwischen zwei Zeiträumen am stärksten verändert hat – und woran man es
+sieht.
+
+- **Zwei Zeiträume A und B** wählbar (Standard: vor/ab Zäsur `meta.shift_point`,
+  ohne Zäsur die zwei Hälften). Je Zeitraum werden die Nachbarlisten der
+  belegten Scheiben per Rangpunkten (Borda) zu einer Liste zusammengelegt.
+- **Tabelle je Zielwort**, aufsteigend nach Überlappung A ↔ B (stärkster Wandel
+  zuerst); Wörter ohne Beleg in einem Zeitraum stehen am Ende.
+- **Binnen-Überlappung als Grundrauschen** (Ergänzung zum Paper): die Scheiben
+  eines Zeitraums werden abwechselnd in zwei Hälften geteilt, gepoolt und
+  verglichen. Der Strich im Balken markiert sie; „Abstand" = Binnen-Mittel minus
+  A ↔ B. Nur ein deutlich positiver Abstand spricht für Wandel.
+- **Klick auf eine Zeile** zeigt die verlorenen, gemeinsamen und gewonnenen
+  Nachbarn. k wie bei der Überlappung in Matrizen und Drift.
 
 ### Wort gegen Wort
 
@@ -163,18 +209,24 @@ backend/tests/         pytest: Regeln aus SCHEMA.md + Konformitätstest
 frontend/src/
   modules/registry.tsx Modul-Registry — verbindet Rail, Konfigurator, Hauptbereich
   modules/*.tsx        je ein Werkzeug (daten, nachbarfilter, wortraum, matrizen,
-                       drift, paare, nachbarn)
+                       drift, paare, nachbarn, wandel)
   state/               store.ts (Bundle/Zeit/Auswahl, global) · workbench.ts (Navigation)
                        · neighborFilters.ts (Nachbar-Filter, Abfrage beim Backend)
-                       · je Modul ein kleiner Options-Store
+                       · je Modul ein kleiner Options-Store (metricOptions
+                       gemeinsam für Matrizen und Drift)
   viz/                 3D-Szene + Farbtokens; Rechenschicht: similarity.ts
                        (Kosinus/Kiyama) → series.ts (Drift, Paare) ·
+                       overlap.ts (Nachbarschafts-Überlappung, Wandel-Ranking) ·
                        neighborFlow.ts (Nachbarn) · neighborPoints.ts +
                        resolution.ts (NN-Bildauflösung, Auflösungs-Gating);
                        Renderer: *Canvas.tsx, LineChart.tsx, hatch.ts (die eine
                        „kein Beleg"-Textur)
   ui/                  Shell-Bausteine (Rail, Header, Sektionen, Zeitachse,
-                       NeighborKControl, VolumeNote, ProjectionNote …)
+                       NeighborKControl, MetricControl, NeighborDiff,
+                       VolumeNote, ProjectionNote …)
+  test/fixtures/       Demo-Bundles für die Tests
+docs/SCHEMA.md         Datenvertrag (Bundle-Schema)
+Dockerfile             Image für das Deployment (Frontend + Backend)
 specs/                  Rohmaterial + Demo-Bundles (unverändert)  (git-ignored)
 ```
 
@@ -224,12 +276,12 @@ Zeigt das Backend auf einem anderen Port/Host, per Env setzen:
 `VITE_API_TARGET=http://localhost:8077 npm run dev`.
 
 Weitere Skripte: `npm run build`, `npm run typecheck`, `npm test` (vitest:
-Schema gegen die Demo-Bundles, Rechenschicht, Nachbar-Filter).
+Schema gegen die Demo-Bundles, Rechenschicht inkl. Überlappung, Nachbar-Filter).
 
 ## Eigene Datensätze anzeigen
 
 - **Ad-hoc:** JSON per „Datei öffnen…" wählen oder in den Header ziehen.
-- **Dauerhaft:** JSON nach `backend/bundles/` legen → erscheint im Picker.
+- **Dauerhaft:** JSON nach `backend/bundles/` legen (nicht im Git, siehe unten) → erscheint im Picker.
   Für Nachbar-Filter die Suchraum-Dateien aus `meta.neighbor_space`
   (`.vectors.npy`, `.index.parquet`) daneben legen; danach `uv run pytest`,
   der Konformitätstest prüft das neue Bundle mit.
@@ -237,3 +289,19 @@ Schema gegen die Demo-Bundles, Rechenschicht, Nachbar-Filter).
 Ungültige Bundles werden mit lesbarer Fehlermeldung abgewiesen (Schema- und
 JSON-Syntaxfehler).
 
+## Deployment (Docker)
+
+Ein Image enthält Backend und gebautes Frontend: FastAPI liefert `/bundles` und
+`/health` und das Frontend unter `/` (gleiche Origin, kein eigener Webserver).
+
+```bash
+docker build -t pdl-lt-vsv .
+docker run -p 8000:8000 -v /pfad/zu/bundles:/data/bundles pdl-lt-vsv
+```
+
+- **Bundles liegen nicht im Image und nicht im Git**, sondern auf einem Volume
+  unter `/data/bundles` (`BUNDLES_DIR`). Pro Bundle gehören das JSON sowie
+  `.vectors.npy` und `.index.parquet` hinein. `backend/bundles/` ist
+  git-ignoriert und dient nur der lokalen Entwicklung.
+- `FRONTEND_DIST` (Pfad des gebauten Frontends), `CORS_ORIGINS` (Standard `*`)
+  und `NEIGHBORS_K_MAX` sind per Env überschreibbar. Health-Check: `GET /health`.

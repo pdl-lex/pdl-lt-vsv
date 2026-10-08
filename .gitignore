@@ -16,9 +16,6 @@ backend/app/__pycache__/
 .idea/
 .vscode/
 
-# Quelldaten
-pipeline/source_data/
-
 # Specs for Implementation
 specs/
 CLAUDE.md
@@ -26,17 +23,12 @@ start.txt
 .claude/
 
 
-# Python / Pipeline
+# Python
 .venv/
-pipeline/__marimo__/
-
-# SGNS-Zwischenstaende (lemmatisierter Volltext, trainierte Modelle) - mehrere
-# hundert MB, rekonstruierbar aus source_data/
-pipeline/cache/
-
-# spaCy-Modell-Wheel (44 MB) — Bezugsweg in pipeline/README.md
-pipeline/assets/
 
 # LibreOffice-Sperrdateien
 .~lock.*#
 
+
+# Bundles liegen auf einem gemounteten Volume (BUNDLES_DIR), nicht im Repo
+backend/bundles/

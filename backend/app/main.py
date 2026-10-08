@@ -9,10 +9,12 @@ ggf. Re-Projektion.
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from .bundles import router as bundles_router
 from .neighbors import router as neighbors_router
@@ -44,3 +46,11 @@ app.include_router(neighbors_router)
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+# In Produktion liefert das Backend das gebaute Frontend unter / aus (gleiche
+# Origin, kein eigener Webserver). Zuletzt gemountet, damit /bundles und /health
+# Vorrang haben. Lokal (Vite-Dev-Server) existiert das Verzeichnis nicht.
+_DIST = Path(os.environ.get("FRONTEND_DIST", Path(__file__).resolve().parent.parent / "frontend" / "dist"))
+if _DIST.is_dir():
+    app.mount("/", StaticFiles(directory=str(_DIST), html=True), name="frontend")
