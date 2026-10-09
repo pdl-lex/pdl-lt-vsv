@@ -20,6 +20,7 @@ Modulwechsel verliert weder Auswahl noch Zeitposition.
 |---|---|
 | **Datenquelle** | Bundle laden und prüfen: Projektion, Zeitraum, Facetten, Belegung je Zielwort |
 | **Filter für nächste Nachbarn** | Welche Wörter als Nachbarn infrage kommen (Wortart, Mindestbelegung, Stoppwörter …); gilt in allen Modulen |
+| **Anker** | Welche Wörter als beschriftete Landmarken stehen, mit Label und Cluster; ergänzen, entfernen, importieren, exportieren (nur für die Sitzung) |
 | **Wortraum (3D)** | Trajektorien durch den gemeinsamen Vektorraum, Zeit als Achse |
 | **Ähnlichkeitsmatrizen** | T×T-Selbstähnlichkeit je Zielwort (Kiyama) |
 | **Drift-Kurven** | Abstand zu einem Bezugszeitpunkt über die Zeit (Hamilton) |
@@ -88,6 +89,26 @@ Nachbarschafts-Fluss.
 - **Rückfall:** Ohne Suchraum, bei einer aus einer Datei geöffneten Bundle-Datei
   oder wenn das Backend nicht antwortet, gelten die vorberechneten `neighbors`
   des Bundles, mit Hinweis. Sie entsprechen genau den Voreinstellungen.
+
+### Anker
+
+Eine Seite für die Anker-Liste. Geladen werden die Anker des Bundles; geändert
+wird nur für die laufende Sitzung, das Bundle bleibt unverändert. Neu laden
+oder ein anderes Bundle öffnen stellt dessen Anker wieder her.
+
+- **Suchfeld** über den ganzen Wortbestand mit Position im Bild: Anker des
+  Bundles, Kandidaten des Suchraums (sobald geladen, nur solche ohne eigene
+  Zeitscheibe) und `vocab_points`. Andere Wörter können nicht Anker werden,
+  denn gerechnet wird nichts.
+- **Liste der Anker** mit Label und Cluster, beides direkt änderbar; Cluster
+  für neue Anker vorwählbar. Entfernen per ×, zurück auf die Anker des Bundles.
+- **Export/Import** als Tabelle `lemma`, `label`, `cluster` (TSV; beim Import
+  auch `;`/`,` oder eine reine Wortliste). Positionen kommen aus dem Bundle,
+  Wörter ohne Position werden gemeldet und ausgelassen.
+- **Wirkung:** Landmarken und Cluster-Legende im Wortraum; Nachbarn, die Anker
+  sind, tragen dessen Label und Cluster (Zuordnung über das Lemma) — im Panel,
+  im 3D-Bild und im Nachbarschafts-Fluss. Auswahl und Rang der Nachbarn ändern
+  sich nicht.
 
 ### Ähnlichkeitsmatrizen (Kiyama)
 
@@ -208,10 +229,11 @@ backend/app/           FastAPI: bundles.py (listet + liefert Bundles) ·
 backend/tests/         pytest: Regeln aus SCHEMA.md + Konformitätstest
 frontend/src/
   modules/registry.tsx Modul-Registry — verbindet Rail, Konfigurator, Hauptbereich
-  modules/*.tsx        je ein Werkzeug (daten, nachbarfilter, wortraum, matrizen,
-                       drift, paare, nachbarn, wandel)
+  modules/*.tsx        je ein Werkzeug (daten, nachbarfilter, anker, wortraum,
+                       matrizen, drift, paare, nachbarn, wandel)
   state/               store.ts (Bundle/Zeit/Auswahl, global) · workbench.ts (Navigation)
                        · neighborFilters.ts (Nachbar-Filter, Abfrage beim Backend)
+                       · anchors.ts (Anker der Sitzung, Import/Export)
                        · je Modul ein kleiner Options-Store (metricOptions
                        gemeinsam für Matrizen und Drift)
   viz/                 3D-Szene + Farbtokens; Rechenschicht: similarity.ts

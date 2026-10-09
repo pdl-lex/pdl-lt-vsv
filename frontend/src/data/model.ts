@@ -63,6 +63,9 @@ export interface IndexedBundle {
   primaryFacetId: string | null;
   /** Wert-ID der Primär-Facette → Slot-Index (feste Reihenfolge aus dem Schema). */
   primaryValueIndex: Map<string, number>;
+  /** Die Anker, die alle Ansichten zeigen. Anfangs die des Bundles; auf der
+   * Seite „Anker“ für die Sitzung änderbar (`withAnchors`). Das Bundle selbst
+   * bleibt unverändert (`bundle.anchors`). */
   anchors: Anchor[];
   anchorByLabel: Map<string, Anchor>;
   /** Koordinaten-Tabelle für Nachbarn, die kein Anker sind (s. `pointForLabel`).
@@ -82,6 +85,10 @@ export interface IndexedBundle {
    * Filtern deren Ergebnis (`withQueriedNeighbors`). Das Bundle selbst bleibt
    * unverändert — es ist der Rückfall (`withBundleNeighbors`). */
   neighbors: Neighbors;
+  /** Dieselben Listen vor der Zuordnung zu den Ankern der Sitzung: so, wie
+   * Bundle bzw. Backend sie liefern (Label und Gruppe nach `bundle.anchors`).
+   * Gleich `neighbors`, solange die Anker nicht geändert wurden. */
+  baseNeighbors: Neighbors;
   /** Woher `neighbors` stammt: vorberechnet im Bundle oder aus einer Abfrage. */
   neighborSource: "bundle" | "query";
   /** Längste Nachbarliste in `neighbors` = Obergrenze des k-Reglers.
@@ -256,12 +263,8 @@ export function indexBundle(bundle: Bundle): IndexedBundle {
     facetTracks.set(entityId, list);
   }
 
-  const anchorByLabel = new Map<string, Anchor>();
-  for (const a of bundle.anchors) {
-    anchorByLabel.set(a.label, a);
-    anchorByLabel.set(a.label.toLowerCase(), a); // toleranter NN-Match
-  }
-  const clusters = [...new Set(bundle.anchors.map((a) => a.cluster))].sort();
+  const anchorByLabel = indexAnchors(bundle.anchors);
+  const clusters = clustersOf(bundle.anchors);
 
   // Positions-Tabelle für die Nachbarlisten. Anker zuerst eintragen, damit sie
   // bei gleichem Text gewinnen (s. `pointByLabel` im Interface).
@@ -305,6 +308,7 @@ export function indexBundle(bundle: Bundle): IndexedBundle {
     vocabPoints: bundle.vocab_points,
     pointByLabel,
     neighbors: bundle.neighbors,
+    baseNeighbors: bundle.neighbors,
     neighborSource: "bundle",
     maxNeighborK: longestList(bundle.neighbors),
     clusters,
@@ -437,7 +441,14 @@ export function withQueriedNeighbors(
     if (!pointByLabel.has(lower)) pointByLabel.set(lower, coords);
   });
 
-  return { ...idx, neighbors, neighborSource: "query", pointByLabel, maxNeighborK: result.k };
+  return {
+    ...idx,
+    neighbors: relabelNeighbors(neighbors, idx.bundle.anchors, idx.anchors),
+    baseNeighbors: neighbors,
+    neighborSource: "query",
+    pointByLabel,
+    maxNeighborK: result.k,
+  };
 }
 
 /** Zurück zu den vorberechneten Nachbarn des Bundles (Rückfall). */
@@ -445,9 +456,97 @@ export function withBundleNeighbors(idx: IndexedBundle): IndexedBundle {
   if (idx.neighborSource === "bundle") return idx;
   return {
     ...idx,
-    neighbors: idx.bundle.neighbors,
+    neighbors: relabelNeighbors(idx.bundle.neighbors, idx.bundle.anchors, idx.anchors),
+    baseNeighbors: idx.bundle.neighbors,
     neighborSource: "bundle",
     maxNeighborK: longestList(idx.bundle.neighbors),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Anker der Sitzung (Seite „Anker“)
+// ---------------------------------------------------------------------------
+
+/** Gruppe eines Nachbarn, der kein Anker ist (SCHEMA.md, „Auswertung einer Abfrage“, Schritt 5). */
+export const FALLBACK_GROUP = "KONTEXT";
+
+/** Lemma eines Ankers, falls angegeben (`anchors[].lemma` ist optional). */
+export function anchorLemma(a: Anchor): string | undefined {
+  return typeof a.lemma === "string" ? a.lemma : undefined;
+}
+
+/** Worüber ein Anker einem Nachbarn zugeordnet wird: das Lemma, ohne Lemma das Label. */
+export function anchorKey(a: Anchor): string {
+  return anchorLemma(a) ?? a.label;
+}
+
+function indexAnchors(anchors: Anchor[]): Map<string, Anchor> {
+  const byLabel = new Map<string, Anchor>();
+  for (const a of anchors) {
+    byLabel.set(a.label, a);
+    byLabel.set(a.label.toLowerCase(), a); // toleranter NN-Match
+  }
+  return byLabel;
+}
+
+function clustersOf(anchors: Anchor[]): string[] {
+  return [...new Set(anchors.map((a) => a.cluster))].sort();
+}
+
+/**
+ * Nachbarlisten den Ankern der Sitzung zuordnen. Bundle und Backend vergeben
+ * Label und Gruppe nach den Ankern des Bundles (über das Lemma); hier wird das
+ * für die geänderte Liste nachgeholt — gerechnet wird nichts, Rang und Score
+ * bleiben. Ein Nachbar, der Anker des Bundles war und es nicht mehr ist, wird
+ * wieder zu Lemma und `KONTEXT`.
+ */
+export function relabelNeighbors(neighbors: Neighbors, shipped: Anchor[], working: Anchor[]): Neighbors {
+  if (shipped === working) return neighbors;
+  const shippedByLabel = new Map(shipped.map((a) => [a.label, a]));
+  const shippedByKey = new Map(shipped.map((a) => [anchorKey(a), a]));
+  const workingByKey = new Map(working.map((a) => [anchorKey(a), a]));
+
+  const relabel = (n: Neighbor): Neighbor => {
+    // Neuere Listen tragen das Lemma; bei älteren steht am Anker-Nachbarn nur das Anker-Label.
+    const from = n.lemma !== undefined ? shippedByKey.get(n.lemma) : shippedByLabel.get(n.label);
+    const lemma = n.lemma ?? (from ? anchorKey(from) : n.label);
+    const a = workingByKey.get(lemma);
+    if (a) {
+      return a.label === n.label && a.cluster === n.group ? n : { ...n, label: a.label, group: a.cluster, lemma };
+    }
+    if (from && from.label === n.label) return { ...n, label: lemma, group: FALLBACK_GROUP, lemma };
+    return n;
+  };
+
+  const out: Neighbors = {};
+  for (const [entityId, perSlice] of Object.entries(neighbors)) {
+    const slices: Record<string, Neighbor[]> = {};
+    for (const [sliceId, list] of Object.entries(perSlice)) slices[sliceId] = list.map(relabel);
+    out[entityId] = slices;
+  }
+  return out;
+}
+
+/**
+ * Anker der Sitzung einsetzen (Seite „Anker“). Ersetzt die Anker-Landmarken,
+ * die Cluster der Legende und die Zuordnung der Nachbarn; das Bundle und die
+ * Bildausschnitt-Berechnung (`center`/`scale`) bleiben, damit die Szene beim
+ * Bearbeiten nicht springt.
+ */
+export function withAnchors(idx: IndexedBundle, anchors: Anchor[]): IndexedBundle {
+  const pointByLabel = new Map(idx.pointByLabel);
+  for (const a of anchors) {
+    pointByLabel.set(a.label, a.coords_3d as Coords3d);
+    const lower = a.label.toLowerCase();
+    if (!pointByLabel.has(lower)) pointByLabel.set(lower, a.coords_3d as Coords3d);
+  }
+  return {
+    ...idx,
+    anchors,
+    anchorByLabel: indexAnchors(anchors),
+    clusters: clustersOf(anchors),
+    pointByLabel,
+    neighbors: relabelNeighbors(idx.baseNeighbors, idx.bundle.anchors, anchors),
   };
 }
 

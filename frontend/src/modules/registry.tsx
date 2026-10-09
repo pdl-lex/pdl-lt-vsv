@@ -20,6 +20,7 @@ import { PaareConfig, PaareMain } from "./paare";
 import { NachbarnConfig, NachbarnMain } from "./nachbarn";
 import { WandelConfig, WandelMain } from "./wandel";
 import { NachbarfilterConfig, NachbarfilterMain } from "./nachbarfilter";
+import { AnkerConfig, AnkerMain } from "./anker";
 
 export interface ModuleDef {
   id: string;
@@ -59,6 +60,18 @@ export const MODULES: ModuleDef[] = [
       "Welche Wörter als nächste Nachbarn infrage kommen — Wortart, Mindestbelegung, Stoppwörter. Gilt in allen Modulen.",
     Config: NachbarfilterConfig,
     Main: NachbarfilterMain,
+  },
+  {
+    id: "anker",
+    label: "Anker",
+    group: "Daten",
+    icon: "pin",
+    eyebrow: "Daten",
+    title: "Anker",
+    description:
+      "Welche Wörter im Wortraum als Landmarken stehen, mit Label und Cluster. Gilt für diese Sitzung.",
+    Config: AnkerConfig,
+    Main: AnkerMain,
   },
   {
     id: "wortraum",

@@ -776,3 +776,31 @@ button, input, select, textarea { font-family: inherit; }
 .nf__word:hover .nf__wordx, .nf__wordx:focus-visible { opacity: 1; }
 .nf__wordx:hover { color: var(--lt-warn); }
 .nf__cloud--stale .nf__cloud { opacity: 0.5; transition: opacity 0.2s; }
+
+/* ── Anker ────────────────────────────────────────────────────────────────── */
+.an__clusterrow { margin-top: 8px; }
+.an__clusterrow .nf__check { flex: none; cursor: default; }
+.an__cluster { flex: 1; min-width: 0; }
+.an__hint { margin-top: 10px; }
+.an__results {
+  list-style: none; margin: 10px 0 0; padding: 0;
+  max-height: 420px; overflow-y: auto; border-top: 1px solid var(--lt-line-1);
+}
+.an__result {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px;
+  padding: 5px 2px; border-bottom: 1px solid var(--lt-line-1); font-size: 12.5px;
+}
+.an__word { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.an__src { font-size: 11px; color: var(--lt-fg-3); white-space: nowrap; }
+.an__taken { font-size: 11px; color: var(--lt-fg-4); padding: 0 9px; }
+.an__add { padding: 2px 8px; font-size: 11.5px; }
+.an__filter { width: 100%; margin-bottom: 8px; }
+.an__tablewrap { max-height: 520px; overflow-y: auto; }
+.an__tbl td { padding: 3px 6px; }
+.an__edit {
+  width: 100%; min-width: 6em; font: inherit; font-size: 12.5px; color: var(--lt-fg-1);
+  padding: 2px 4px; border: 1px solid transparent; border-radius: var(--lt-r-sm); background: none;
+}
+.an__edit:hover { border-color: var(--lt-line-1); }
+.an__edit:focus { outline: none; border-color: var(--lt-primary-line); background: var(--lt-bg-1); }
+.an__tbl tr:hover .an__remove, .an__remove:focus-visible { opacity: 1; }
