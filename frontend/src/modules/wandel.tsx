@@ -8,13 +8,15 @@
  * Zeitraum A und B, aufsteigend sortiert, dazu per Klick die verlorenen,
  * gemeinsamen und gewonnenen Nachbarn.
  *
- * Ergänzung gegenüber dem Paper: die **Binnen-Überlappung** (Split-Half, siehe
- * `withinOverlap`). Gonen vergleicht zwei Korpora; hier bestehen die Zeiträume
- * aus mehreren Scheiben, deren Listen schon untereinander schwanken. Erst gegen
- * dieses Grundrauschen sagt eine niedrige Überlappung A↔B etwas aus.
+ * Ergänzung gegenüber dem Paper: ein **Grundrauschen** (Permutations-Baseline,
+ * siehe `splitBaseline`). Gonen vergleicht zwei Korpora; hier bestehen die
+ * Zeiträume aus mehreren Scheiben, deren Listen schon untereinander schwanken.
+ * Erst gegen dieses Grundrauschen sagt eine niedrige Überlappung A↔B etwas aus.
+ * Die Binnen-Überlappung je Zeitraum (`withinOverlap`) steht nur beschreibend
+ * daneben.
  */
 import { useMemo } from "react";
-import { useViz } from "../state/store";
+import { useViz, useVizPick } from "../state/store";
 import { useMetricOptions } from "../state/metricOptions";
 import { useChangeOptions } from "../state/changeOptions";
 import { useMode } from "../viz/useMode";
@@ -131,15 +133,17 @@ export function WandelConfig() {
         <dl className="readkey">
           <dt>A ↔ B</dt>
           <dd>Anteil gemeinsamer Wörter unter den k nächsten Nachbarn beider Zeiträume. Niedrig = veränderter Gebrauch.</dd>
-          <dt>Binnen</dt>
-          <dd>Grundrauschen: die Scheiben eines Zeitraums abwechselnd in zwei Hälften geteilt, beide gepoolt und verglichen. So viel Überlappung ist schon ohne Wandel zu erwarten.</dd>
+          <dt>Zufall (Strich im Balken)</dt>
+          <dd>Grundrauschen: die belegten Scheiben von A und B ohne Rücksicht auf ihren Zeitraum auf zwei gleich große Gruppen verteilt, gepoolt und verglichen (Mittel über die Aufteilungen). So viel Überlappung ist ohne Unterschied zwischen A und B zu erwarten — bei derselben Pooling-Tiefe wie A ↔ B.</dd>
           <dt>Abstand</dt>
-          <dd>Binnen (Mittel aus A und B) minus A ↔ B. Nur ein deutlich positiver Abstand spricht für Wandel; um 0 ist er von der üblichen Schwankung nicht zu unterscheiden.</dd>
+          <dd>Zufall minus A ↔ B. Nur ein deutlich positiver Abstand spricht für Wandel; um 0 ist er von der üblichen Schwankung nicht zu unterscheiden.</dd>
+          <dt>Binnen A / B</dt>
+          <dd>Wie stabil das Umfeld innerhalb eines Zeitraums ist: seine Scheiben abwechselnd in zwei Hälften geteilt und verglichen. Beschreibend; geht nicht in den Abstand ein, weil die Hälften nur halb so viele Scheiben poolen.</dd>
         </dl>
         <p className="card__note">
           Nach Gonen et al., „Simple, Interpretable and Stable Method for Detecting
-          Words with Usage Change across Corpora" (ACL 2020). Die Binnen-Überlappung
-          ist eine Ergänzung für Zeiträume aus mehreren Scheiben.
+          Words with Usage Change across Corpora" (ACL 2020). Zufalls- und
+          Binnen-Überlappung sind Ergänzungen für Zeiträume aus mehreren Scheiben.
         </p>
       </Section>
     </>
@@ -151,7 +155,7 @@ const pct = (v: number) => (Number.isFinite(v) ? `${Math.round(v * 100)} %` : "�
 /** Balken für A ↔ B mit Strich auf Höhe des Grundrauschens. */
 function OverlapBar({ value, noise }: { value: number; noise: number }) {
   return (
-    <span className="ovbar" title={`A ↔ B ${pct(value)} · Binnen ${pct(noise)}`}>
+    <span className="ovbar" title={`A ↔ B ${pct(value)} · Zufall ${pct(noise)}`}>
       <span className="ovbar__track">
         {Number.isFinite(value) && <span className="ovbar__fill" style={{ width: `${value * 100}%` }} />}
         {Number.isFinite(noise) && <span className="ovbar__noise" style={{ left: `${noise * 100}%` }} />}
@@ -162,7 +166,7 @@ function OverlapBar({ value, noise }: { value: number; noise: number }) {
 }
 
 export function WandelMain() {
-  const { indexed, status, selectedEntityIds } = useViz();
+  const { indexed, status, selectedEntityIds } = useVizPick("indexed", "status", "selectedEntityIds");
   const overlapK = useMetricOptions((s) => s.overlapK);
   const { openEntityId, setOpenEntityId } = useChangeOptions();
   const mode = useMode();
@@ -214,16 +218,16 @@ export function WandelMain() {
               <th className="tbl__num">#</th>
               <th>Wort</th>
               <th>A ↔ B</th>
-              <th className="tbl__num">Binnen A</th>
-              <th className="tbl__num">Binnen B</th>
-              <th className="tbl__num" title="Binnen-Mittel minus A ↔ B, in Prozentpunkten">Abstand</th>
+              <th className="tbl__num" title="Erwartete Überlappung bei zufälliger Aufteilung der Scheiben von A und B">Zufall</th>
+              <th className="tbl__num" title="Zufall minus A ↔ B, in Prozentpunkten">Abstand</th>
+              <th className="tbl__num" title="Stabilität innerhalb des Zeitraums (Hälften gegeneinander), beschreibend">Binnen A</th>
+              <th className="tbl__num" title="Stabilität innerhalb des Zeitraums (Hälften gegeneinander), beschreibend">Binnen B</th>
               <th className="tbl__num" title="Belegte Zeitscheiben je Zeitraum">Belegung A · B</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r, rank) => {
-              const within = [r.withinA, r.withinB].filter(Number.isFinite);
-              const noise = within.length > 0 ? within.reduce((x, y) => x + y, 0) / within.length : NaN;
+              const noise = r.baseline;
               const gap = noise - r.between;
               const isOpen = open?.entityId === r.entityId;
               return (
@@ -246,11 +250,12 @@ export function WandelMain() {
                   <td>
                     <OverlapBar value={r.between} noise={noise} />
                   </td>
-                  <td className="tbl__num lt-mono">{pct(r.withinA)}</td>
-                  <td className="tbl__num lt-mono">{pct(r.withinB)}</td>
+                  <td className="tbl__num lt-mono">{pct(noise)}</td>
                   <td className={`tbl__num lt-mono ${gap > 0.1 ? "tbl__strong" : "tbl__muted"}`}>
                     {Number.isFinite(gap) ? `${gap > 0 ? "+" : ""}${Math.round(gap * 100)}` : "—"}
                   </td>
+                  <td className="tbl__num lt-mono tbl__muted">{pct(r.withinA)}</td>
+                  <td className="tbl__num lt-mono tbl__muted">{pct(r.withinB)}</td>
                   <td className={`tbl__num lt-mono ${r.a.used < r.a.total || r.b.used < r.b.total ? "cov__num--partial" : "tbl__muted"}`}>
                     {r.a.used}/{r.a.total} · {r.b.used}/{r.b.total}
                   </td>
@@ -260,10 +265,10 @@ export function WandelMain() {
           </tbody>
         </table>
         <p className="card__note">
-          Der Strich im Balken markiert die Binnen-Überlappung (Mittel aus A und B,
-          je Zeitraum zwei Hälften gegeneinander). Liegt der Balken deutlich links
-          davon, unterscheiden sich die Zeiträume stärker als die Hälften eines
-          Zeitraums untereinander. Klick auf eine Zeile
+          Der Strich im Balken markiert die Zufalls-Überlappung: die Scheiben von A
+          und B zufällig auf zwei gleich große Gruppen verteilt. Liegt der Balken
+          deutlich links davon, unterscheiden sich die Zeiträume stärker als
+          beliebige Gruppen derselben Scheiben. Klick auf eine Zeile
           zeigt, welche Nachbarn weggefallen und hinzugekommen sind.
         </p>
       </section>

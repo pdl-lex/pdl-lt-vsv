@@ -13,7 +13,7 @@
  * faltet ihn über die ganze Zeitachse auf.
  */
 import { useMemo } from "react";
-import { useViz } from "../state/store";
+import { useVizPick } from "../state/store";
 import { useMode } from "../viz/useMode";
 import { buildNeighborFlow } from "../viz/neighborFlow";
 import { FlowGroupLegend, NeighborFlowCanvas } from "../viz/NeighborFlowCanvas";
@@ -25,7 +25,9 @@ import { NeighborKControl } from "../ui/NeighborKControl";
 import { NeighborFilterNote } from "../ui/NeighborFilterNote";
 
 export function NachbarnConfig() {
-  const { indexed, activeEntityId, setActiveEntity } = useViz();
+  const { indexed, activeEntityId, setActiveEntity } = useVizPick(
+    "indexed", "activeEntityId", "setActiveEntity",
+  );
   if (!indexed) return <p className="prose">Erst im Modul „Datenquelle" ein Bundle laden.</p>;
 
   return (
@@ -83,7 +85,9 @@ export function NachbarnConfig() {
 }
 
 export function NachbarnMain() {
-  const { indexed, status, activeEntityId, neighborK } = useViz();
+  const { indexed, status, activeEntityId, neighborK } = useVizPick(
+    "indexed", "status", "activeEntityId", "neighborK",
+  );
   const mode = useMode();
 
   const entityId = activeEntityId ?? indexed?.tracks[0]?.entity.id ?? null;

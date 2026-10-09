@@ -21,10 +21,11 @@ import {
   type CatalogWord,
 } from "../state/anchors";
 import { useNeighborFilters } from "../state/neighborFilters";
-import { useViz } from "../state/store";
+import { useViz, useVizPick } from "../state/store";
 import { useMode } from "../viz/useMode";
 import { clusterColor } from "../viz/theme";
 import { Section } from "../ui/Section";
+import { downloadText } from "../ui/download";
 import { Icon } from "../design/icons";
 
 const SEARCH_LIMIT = 50;
@@ -35,7 +36,7 @@ const SOURCE_LABEL: Record<CatalogWord["source"], string> = {
 };
 
 export function AnkerConfig() {
-  const { indexed } = useViz();
+  const indexed = useViz((s) => s.indexed);
   if (!indexed) return <p className="prose">Erst im Modul „Datenquelle" ein Bundle laden.</p>;
   const diff = anchorDiff(indexed.anchors, indexed.bundle.anchors);
   const edited = diff.added.length + diff.removed.length + diff.changed.length > 0;
@@ -71,7 +72,7 @@ export function AnkerConfig() {
 }
 
 export function AnkerMain() {
-  const { indexed, status } = useViz();
+  const { indexed, status } = useVizPick("indexed", "status");
   const space = useNeighborFilters((s) => s.space);
   const spaceStatus = useNeighborFilters((s) => s.spaceStatus);
   const searchable = useNeighborFilters((s) => s.availability.kind === "available");
@@ -272,15 +273,11 @@ function AnchorListCard({ catalog }: { catalog: CatalogWord[] }) {
   if (!indexed) return null;
 
   const download = () => {
-    const blob = new Blob([anchorFileText(anchors, indexed.bundle.meta.name ?? "Bundle")], {
-      type: "text/tab-separated-values;charset=utf-8",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "anchors.tsv";
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadText(
+      anchorFileText(anchors, indexed.bundle.meta.name ?? "Bundle"),
+      "anchors.tsv",
+      "text/tab-separated-values;charset=utf-8",
+    );
   };
 
   const upload = async (file: File | undefined) => {

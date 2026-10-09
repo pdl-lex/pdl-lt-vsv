@@ -7,7 +7,7 @@
  * gesamte Zeitspanne auf einmal).
  */
 import { Canvas } from "@react-three/fiber";
-import { useViz } from "../state/store";
+import { useViz, useVizPick } from "../state/store";
 import { useMode } from "../viz/useMode";
 import { INK } from "../viz/theme";
 import { Scene } from "../viz/Scene";
@@ -24,7 +24,7 @@ import { ModeSwitch } from "../ui/ModeSwitch";
 import { FacetFilter } from "../ui/FacetFilter";
 
 export function WortraumConfig() {
-  const { indexed, viewMode, facetFilters } = useViz();
+  const { indexed, viewMode, facetFilters } = useVizPick("indexed", "viewMode", "facetFilters");
   if (!indexed) return <p className="prose">Erst im Modul „Datenquelle" ein Bundle laden.</p>;
 
   const activeFacetCount = Object.values(facetFilters).reduce((n, s) => n + (s?.size ?? 0), 0);
@@ -73,7 +73,9 @@ export function WortraumMain() {
   const {
     indexed, status, selectedEntityIds, activeEntityId, sliceT, viewMode, facetFilters, neighborK,
     setActiveEntity,
-  } = useViz();
+  } = useVizPick(
+    "indexed", "status", "selectedEntityIds", "activeEntityId", "sliceT", "viewMode", "facetFilters", "neighborK", "setActiveEntity",
+  );
   const mode = useMode();
   const ink = INK[mode];
 

@@ -8,7 +8,7 @@
  * sind**. `freq == 0` heißt bundleweit „im Korpus nicht belegt"; die Abdeckungs-
  * spalte macht sichtbar, wieviel eines Zielworts überhaupt Substanz hat.
  */
-import { useViz } from "../state/store";
+import { useVizPick } from "../state/store";
 import { useWorkbench } from "../state/workbench";
 import { useMode } from "../viz/useMode";
 import { entityColor } from "../viz/theme";
@@ -42,7 +42,7 @@ function Coverage({ filled, total }: { filled: number; total: number }) {
 }
 
 export function DatenMain() {
-  const { indexed, loaded, status } = useViz();
+  const { indexed, loaded, status } = useVizPick("indexed", "loaded", "status");
   const setActiveId = useWorkbench((s) => s.setActiveId);
   const mode = useMode();
 

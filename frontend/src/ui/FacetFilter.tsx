@@ -4,12 +4,14 @@
  * Werte den Farb-Swatch, der sie mit den Linien im Facettiert-Modus verknüpft.
  * Ohne eigene Überschrift – die Konfigurator-Sektion liefert Titel + Badge.
  */
-import { useViz } from "../state/store";
+import { useVizPick } from "../state/store";
 import { useMode } from "../viz/useMode";
 import { facetColor } from "../viz/theme";
 
 export function FacetFilter() {
-  const { indexed, facetFilters, toggleFacetValue, clearFacet, clearAllFacets } = useViz();
+  const { indexed, facetFilters, toggleFacetValue, clearFacet, clearAllFacets } = useVizPick(
+    "indexed", "facetFilters", "toggleFacetValue", "clearFacet", "clearAllFacets",
+  );
   const mode = useMode();
   if (!indexed) return null;
 

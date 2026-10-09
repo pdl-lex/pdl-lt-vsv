@@ -10,7 +10,7 @@ import { moduleById } from "../modules/registry";
 import { Icon, Logo } from "../design/icons";
 
 export function Header() {
-  const { indexed } = useViz();
+  const indexed = useViz((s) => s.indexed);
   const { mode, toggle } = useTheme();
   const activeId = useWorkbench((s) => s.activeId);
   const dark = mode === "dark";

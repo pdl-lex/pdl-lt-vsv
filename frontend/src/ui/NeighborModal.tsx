@@ -9,10 +9,15 @@ import { createPortal } from "react-dom";
 import type { IndexedBundle } from "../data/model";
 import { neighborsAt } from "../data/model";
 import { useNeighborSourceText } from "./NeighborFilterNote";
+import { downloadText } from "./download";
 
-function csvCell(v: string | number | undefined | null): string {
-  const s = v == null ? "" : String(v);
-  return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+export function csvCell(v: string | number | undefined | null): string {
+  let s = v == null ? "" : String(v);
+  // Formel-Injection: Text, der mit = + - @ (oder Tab/CR) beginnt, führen
+  // Tabellenprogramme beim Öffnen als Formel aus. Ein vorangestelltes ' macht
+  // ihn zu Text. Zahlen (negative Scores) bleiben unverändert.
+  if (typeof v === "string" && /^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+  return /[",\n\r;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
 /** Langformat: eine Zeile je (Zeitscheibe, Rang). */
@@ -31,15 +36,7 @@ export function neighborCsv(idx: IndexedBundle, entityId: string, sliceIndices: 
   return rows.join("\n") + "\n";
 }
 
-function download(text: string, filename: string) {
-  const blob = new Blob([text], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
+const download = (text: string, filename: string) => downloadText(text, filename, "text/csv;charset=utf-8");
 
 const safe = (s: string) => s.replace(/[^\p{L}\p{N}_-]+/gu, "_");
 

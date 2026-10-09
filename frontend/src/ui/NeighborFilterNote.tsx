@@ -6,12 +6,14 @@
  */
 import { useViz } from "../state/store";
 import { useWorkbench } from "../state/workbench";
-import { filterSummary, shippedStopwords, useNeighborFilters } from "../state/neighborFilters";
+import { filterSummary, shippedStopwords, useNeighborFiltersPick } from "../state/neighborFilters";
 import { Icon } from "../design/icons";
 
 /** Text und Ton der Anzeige; getrennt, damit Panel und Seite dieselbe Aussage machen. */
 export function useNeighborSourceText(): { text: string; warn: boolean } {
-  const { availability, space, spaceStatus, queryStatus, values, stopwords } = useNeighborFilters();
+  const { availability, space, spaceStatus, queryStatus, values, stopwords } = useNeighborFiltersPick(
+    "availability", "space", "spaceStatus", "queryStatus", "values", "stopwords",
+  );
   const source = useViz((s) => s.indexed?.neighborSource);
 
   if (availability.kind === "unavailable") {

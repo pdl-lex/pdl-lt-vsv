@@ -8,7 +8,7 @@
  * `modules/`.
  */
 import { useEffect } from "react";
-import { useViz } from "./state/store";
+import { useVizPick } from "./state/store";
 import { useWorkbench } from "./state/workbench";
 import { moduleById } from "./modules/registry";
 import { Header } from "./ui/Header";
@@ -16,7 +16,7 @@ import { Rail } from "./ui/Rail";
 import { StatusBar } from "./ui/StatusBar";
 
 export default function App() {
-  const { error, loadList } = useViz();
+  const { error, loadList } = useVizPick("error", "loadList");
   const activeId = useWorkbench((s) => s.activeId);
   const railPinned = useWorkbench((s) => s.railPinned);
   const mod = moduleById(activeId);

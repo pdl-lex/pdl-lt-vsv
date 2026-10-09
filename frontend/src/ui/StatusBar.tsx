@@ -5,7 +5,7 @@
  * Reiner Statusanzeiger, keine Interaktion.
  */
 import type { ReactNode } from "react";
-import { useViz } from "../state/store";
+import { useViz, useVizPick } from "../state/store";
 
 /** Von Hand gepflegt, erscheint rechts in der Statuszeile. */
 const APP_VERSION = "0.2";
@@ -21,7 +21,7 @@ function Item({ dot, k, v, title }: { dot?: string; k?: string; v: ReactNode; ti
 }
 
 export function StatusBar() {
-  const { indexed, loaded, status, listError } = useViz();
+  const { indexed, loaded, status, listError } = useVizPick("indexed", "loaded", "status", "listError");
   const sliceT = useViz((s) => s.sliceT);
 
   if (!indexed) {

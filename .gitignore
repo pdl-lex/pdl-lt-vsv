@@ -32,3 +32,6 @@ start.txt
 
 # Bundles liegen auf einem gemounteten Volume (BUNDLES_DIR), nicht im Repo
 backend/bundles/
+
+# TypeScript-Build-Cache
+*.tsbuildinfo

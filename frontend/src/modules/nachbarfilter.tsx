@@ -17,15 +17,19 @@ import {
   stopwordFileText,
   parseStopwordText,
   useNeighborFilters,
+  useNeighborFiltersPick,
 } from "../state/neighborFilters";
-import { useViz } from "../state/store";
+import { useViz, useVizPick } from "../state/store";
 import { Section } from "../ui/Section";
 import { NeighborFilterNote } from "../ui/NeighborFilterNote";
+import { downloadText } from "../ui/download";
 import { Icon } from "../design/icons";
 
 export function NachbarfilterConfig() {
-  const { indexed } = useViz();
-  const { availability, resetFilters, resetStopwords } = useNeighborFilters();
+  const indexed = useViz((s) => s.indexed);
+  const { availability, resetFilters, resetStopwords } = useNeighborFiltersPick(
+    "availability", "resetFilters", "resetStopwords",
+  );
   if (!indexed) return <p className="prose">Erst im Modul „Datenquelle" ein Bundle laden.</p>;
   const active = availability.kind === "available";
 
@@ -63,10 +67,12 @@ export function NachbarfilterConfig() {
 }
 
 export function NachbarfilterMain() {
-  const { indexed, status } = useViz();
+  const { indexed, status } = useVizPick("indexed", "status");
   const {
     availability, space, spaceStatus, spaceError, queryStatus, queryError, candidateCount, retry,
-  } = useNeighborFilters();
+  } = useNeighborFiltersPick(
+    "availability", "space", "spaceStatus", "spaceError", "queryStatus", "queryError", "candidateCount", "retry",
+  );
 
   if (!indexed) {
     return (
@@ -445,10 +451,12 @@ function CandidateCloud() {
 // ---------------------------------------------------------------------------
 
 function StopwordCard() {
-  const { indexed } = useViz();
+  const indexed = useViz((s) => s.indexed);
   const {
     availability, space, stopwords, addStopwords, removeStopword, replaceStopwords, resetStopwords,
-  } = useNeighborFilters();
+  } = useNeighborFiltersPick(
+    "availability", "space", "stopwords", "addStopwords", "removeStopword", "replaceStopwords", "resetStopwords",
+  );
   const [input, setInput] = useState("");
   const [fileError, setFileError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -464,13 +472,7 @@ function StopwordCard() {
 
   const download = () => {
     const name = indexed?.bundle.meta.name ?? "Bundle";
-    const blob = new Blob([stopwordFileText(stopwords, name)], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "stopwords.txt";
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadText(stopwordFileText(stopwords, name), "stopwords.txt", "text/plain;charset=utf-8");
   };
 
   const upload = async (file: File | undefined) => {

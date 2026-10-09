@@ -5,7 +5,7 @@
  * Slider-Wert (NN sind pro diskreter Scheibe vorberechnet).
  */
 import { useState } from "react";
-import { useViz } from "../state/store";
+import { useVizPick } from "../state/store";
 import { useMode } from "../viz/useMode";
 import { entityFreqAt, neighborsAt, pointForLabel } from "../data/model";
 import { clusterColor } from "../viz/theme";
@@ -42,7 +42,7 @@ const GENERIK_WARNUNG =
   "Wesentlichen die allgemeine Wortmitte.";
 
 export function NeighborPanel() {
-  const { indexed, activeEntityId, sliceT } = useViz();
+  const { indexed, activeEntityId, sliceT } = useVizPick("indexed", "activeEntityId", "sliceT");
   const canHide = useNeighborFilters((s) => s.availability.kind === "available");
   const addStopwords = useNeighborFilters((s) => s.addStopwords);
   const mode = useMode();
@@ -94,7 +94,7 @@ export function NeighborPanel() {
           {neighbors.map((n, i) => {
             // Ein Wort ohne Koordinate im Bundle steht in der Liste, ist im Bild
             // aber nicht auffindbar - das sagt die gedämpfte Schrift.
-            const matched = !!pointForLabel(indexed, n.label);
+            const matched = !!pointForLabel(indexed, n.label, sliceIndex);
             const ci = n.group ? clusterIndex.get(n.group) : undefined;
             return (
               <li key={`${n.label}-${i}`} className="nn__item">

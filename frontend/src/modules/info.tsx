@@ -121,6 +121,10 @@ export function InfoMain() {
             <Ext href="https://numpy.org/">NumPy</Ext>,{" "}
             <Ext href="https://pola.rs/">Polars</Ext>
           </p>
+          <p>
+            Schriften: <Ext href="https://notofonts.github.io/">Noto Sans und Noto Sans Mono</Ext>{" "}
+            (SIL Open Font License 1.1), vom Server dieser Anwendung ausgeliefert.
+          </p>
         </section>
 
         <section className="doc__section">

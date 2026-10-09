@@ -9,10 +9,10 @@
  * aktuellen Listen (`maxNeighborK`): ältere Bundles liefern 8 Nachbarn je Zelle,
  * neue 150, eine Abfrage mit Filtern bis 1000.
  */
-import { NEIGHBOR_K_MAX, useViz } from "../state/store";
+import { NEIGHBOR_K_MAX, useVizPick } from "../state/store";
 
 export function NeighborKControl() {
-  const { indexed, neighborK, setNeighborK } = useViz();
+  const { indexed, neighborK, setNeighborK } = useVizPick("indexed", "neighborK", "setNeighborK");
   if (!indexed) return null;
 
   const top = indexed.maxNeighborK;

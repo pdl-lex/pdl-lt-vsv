@@ -7,12 +7,14 @@
  * - `ConfidenceKey` — die freq→Größe/Deckkraft-Kopplung sichtbar gemacht
  *                     (Sektion „Häufigkeit“).
  */
-import { useViz } from "../state/store";
+import { useVizPick } from "../state/store";
 import { useMode } from "../viz/useMode";
 import { clusterColor, entityColor } from "../viz/theme";
 
 export function TargetWords() {
-  const { indexed, selectedEntityIds, activeEntityId, toggleEntity, setActiveEntity } = useViz();
+  const { indexed, selectedEntityIds, activeEntityId, toggleEntity, setActiveEntity } = useVizPick(
+    "indexed", "selectedEntityIds", "activeEntityId", "toggleEntity", "setActiveEntity",
+  );
   const mode = useMode();
   if (!indexed) return null;
 
@@ -51,7 +53,7 @@ export function TargetWords() {
 }
 
 export function AnchorClusters() {
-  const { indexed, hiddenClusters, toggleCluster } = useViz();
+  const { indexed, hiddenClusters, toggleCluster } = useVizPick("indexed", "hiddenClusters", "toggleCluster");
   const mode = useMode();
   if (!indexed || indexed.clusters.length === 0) return null;
 

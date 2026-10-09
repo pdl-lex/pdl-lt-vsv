@@ -17,6 +17,7 @@ import {
   neighborSets,
   overlap,
   pooledNeighbors,
+  splitBaseline,
 } from "./overlap";
 import { buildOverlapDriftSeries } from "./series";
 
@@ -131,7 +132,50 @@ describe("Wandel-Ranking", () => {
       for (const r of rows) {
         expect(r.a.labels.length).toBeLessThanOrEqual(5);
         if (Number.isFinite(r.withinA)) expect(r.withinA).toBeLessThanOrEqual(1);
+        expect(Number.isFinite(r.baseline)).toBe(Number.isFinite(r.between));
       }
     });
+
+    it(`${file}: Pooling hängt nur von den Top k ab, nicht von der Listenlänge`, () => {
+      const idx = indexed(file);
+      // Dieselben Listen, nur hinten verlängert (wie 150 → 1000 aus der Abfrage)
+      const longer = Object.fromEntries(
+        Object.entries(idx.neighbors).map(([e, per]) => [
+          e,
+          Object.fromEntries(
+            Object.entries(per).map(([s, list]) => [
+              s,
+              [...list, ...Array.from({ length: 50 }, (_, i) => ({ label: `__extra${i}` }))],
+            ]),
+          ),
+        ]),
+      );
+      const idxLong = { ...idx, neighbors: longer, maxNeighborK: idx.maxNeighborK + 50 };
+      const { a, b } = defaultPeriods(idx);
+      const k = 5;
+      const short = buildChangeRanking(idx, idx.tracks.map((t) => t.entity.id), a, b, k);
+      const long = buildChangeRanking(idxLong, idx.tracks.map((t) => t.entity.id), a, b, k);
+      expect(long.map((r) => [r.entityId, r.a.labels, r.b.labels, r.between, r.baseline])).toEqual(
+        short.map((r) => [r.entityId, r.a.labels, r.b.labels, r.between, r.baseline]),
+      );
+    });
   }
+
+  it("splitBaseline: gleiche Listen → 1, getrennte Zeiträume → Zufall deutlich über A ↔ B", () => {
+    const same = [["a", "b", "c"], ["a", "b", "c"]];
+    expect(splitBaseline(same, same, 3)).toBe(1);
+
+    const listsA = [["a", "b", "c"], ["a", "b", "c"], ["a", "b", "c"]];
+    const listsB = [["x", "y", "z"], ["x", "y", "z"], ["x", "y", "z"]];
+    const baseline = splitBaseline(listsA, listsB, 3);
+    expect(baseline).toBeGreaterThan(0.3); // gemischte Gruppen teilen Nachbarn
+    expect(splitBaseline(listsA, [], 3)).toBeNaN();
+  });
+
+  it("splitBaseline: Zufallsauswahl ist deterministisch", () => {
+    const lists = Array.from({ length: 20 }, (_, i) => [`w${i % 7}`, `w${(i * 3) % 11}`, "fest"]);
+    const a = lists.slice(0, 10);
+    const b = lists.slice(10);
+    expect(splitBaseline(a, b, 3, 16)).toBe(splitBaseline(a, b, 3, 16));
+  });
 });

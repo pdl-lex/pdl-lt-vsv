@@ -50,8 +50,9 @@ Bundle wird einmal geladen und von allen Modulen geteilt — ein Modulwechsel ve
 - **Trajektorien** je Zielwort mit Lücken-Behandlung (leere `freq==0`-Zellen
   unterbrechen den Pfad statt Bewegung zu erfinden).
 - **Nearest-Neighbour-Overlay** + Panel (score/group) beim Scrubben, Länge per
-  Regler einstellbar (Standard 8, bis zur Listenlänge: 1000 bei Abfragen über
-  das Backend, sonst die Länge der vorberechneten Listen im Bundle). Ausgewählt
+  Regler einstellbar (Standard 10, höchstens 100 und höchstens die Listenlänge:
+  1000 bei Abfragen über das Backend, sonst die Länge der vorberechneten Listen
+  im Bundle; die ganze Liste steht unter „alle anzeigen“). Ausgewählt
   wird im vollen Vektorraum, der Regler schneidet nur die Anzeigeliste ab.
   Positionen kommen aus `anchors`, aus der Kandidatentabelle des Suchraums bzw.
   aus `vocab_points`. Im Panel blendet „×“ einen Nachbarn aus (als Stoppwort).
@@ -185,13 +186,19 @@ sieht.
 
 - **Zwei Zeiträume A und B** wählbar (Standard: vor/ab Zäsur `meta.shift_point`,
   ohne Zäsur die zwei Hälften). Je Zeitraum werden die Nachbarlisten der
-  belegten Scheiben per Rangpunkten (Borda) zu einer Liste zusammengelegt.
+  belegten Scheiben per Rangpunkten (Borda) zu einer Liste zusammengelegt: jede
+  Liste auf die ersten k gekürzt, Rang r bekommt k − r Punkte. So hängt das
+  Ergebnis nur von den Top-k ab, nicht von der Länge der gelieferten Listen
+  (150 im Bundle, 1000 aus der Abfrage).
 - **Tabelle je Zielwort**, aufsteigend nach Überlappung A ↔ B (stärkster Wandel
   zuerst); Wörter ohne Beleg in einem Zeitraum stehen am Ende.
-- **Binnen-Überlappung als Grundrauschen** (Ergänzung zum Paper): die Scheiben
-  eines Zeitraums werden abwechselnd in zwei Hälften geteilt, gepoolt und
-  verglichen. Der Strich im Balken markiert sie; „Abstand" = Binnen-Mittel minus
-  A ↔ B. Nur ein deutlich positiver Abstand spricht für Wandel.
+- **Zufalls-Überlappung als Grundrauschen** (Ergänzung zum Paper): die belegten
+  Scheiben von A und B werden ohne Rücksicht auf ihren Zeitraum auf zwei
+  gleich große Gruppen verteilt, gepoolt und verglichen (Mittel über alle bzw.
+  64 feste Zufalls-Aufteilungen) — dieselbe Pooling-Tiefe wie A ↔ B. Der Strich
+  im Balken markiert sie; „Abstand" = Zufall minus A ↔ B. Nur ein deutlich
+  positiver Abstand spricht für Wandel. Daneben, nur beschreibend, die
+  Binnen-Überlappung je Zeitraum (Hälften gegeneinander).
 - **Klick auf eine Zeile** zeigt die verlorenen, gemeinsamen und gewonnenen
   Nachbarn. k wie bei der Überlappung in Matrizen und Drift.
 
@@ -209,7 +216,7 @@ Bump-Diagramm der k nächsten Nachbarn: x = Zeit, y = Rang, eine Linie je Nachba
 Die Ansicht, die eine gemessene Verschiebung **in Wörter übersetzt**.
 
 - **Zahl der Rangplätze = Regler „Nachbarn“** (derselbe wie im Wortraum,
-  Standard 8); die Filter der Seite „Filter für nächste Nachbarn“ gelten auch hier.
+  Standard 10, höchstens 100); die Filter der Seite „Filter für nächste Nachbarn“ gelten auch hier.
 - **Farbe steht für die Nachbar-Gruppe**, nicht für das einzelne Wort — bei
   vielen Nachbarn trennt keine Palette alle Serien, und der Befund ist ohnehin,
   welche *Art* Umfeld welche ablöst. Die Wortidentität trägt die
@@ -222,7 +229,7 @@ Die Ansicht, die eine gemessene Verschiebung **in Wörter übersetzt**.
   *Bundeswehr* mit 63 % genau auf der Zäsur.
 - Tabelle aller Nachbarn mit Gruppe, bestem Rang, Dauer und Zeitraum.
 
-Noch nicht enthalten (dokumentiert in [`specs.md`](specs.md) §9): serverseitige
+Noch nicht enthalten (Planung im internen Spezifikationsdokument, nicht im Repo): serverseitige
 Re-Projektion, facettenaufgelöste Ähnlichkeit, CSV-Export, UMAP/Sentiment.
 
 ## Architektur
@@ -330,8 +337,17 @@ docker run -p 8000:8000 -v /pfad/zu/bundles:/data/bundles pdl-lt-vsv
   unter `/data/bundles` (`BUNDLES_DIR`). Pro Bundle gehören das JSON sowie
   `.vectors.npy` und `.index.parquet` hinein. `backend/bundles/` ist
   git-ignoriert und dient nur der lokalen Entwicklung.
-- `FRONTEND_DIST` (Pfad des gebauten Frontends), `CORS_ORIGINS` (Standard `*`)
-  und `NEIGHBORS_K_MAX` sind per Env überschreibbar. Health-Check: `GET /health`.
+- `FRONTEND_DIST` (Pfad des gebauten Frontends), `NEIGHBORS_K_MAX` und
+  `MAX_BODY_BYTES` (Obergrenze für Anfragekörper, Standard 2 MB) sind per Env
+  überschreibbar. Health-Check: `GET /health`.
+- **CORS** ist standardmäßig aus, weil Frontend und API unter derselben Origin
+  laufen. Andere Origins bei Bedarf freigeben: `CORS_ORIGINS=https://a.example,https://b.example`.
+- Der Container läuft als Benutzer `vsv` (UID 10001), nicht als root. Die
+  Bundle-Dateien auf dem Volume müssen deshalb für andere lesbar sein (z. B.
+  Dateien 644, Verzeichnisse 755).
+- **Rate-Limiting** gehört in den Reverse-Proxy davor (z. B. Traefik-Middleware
+  `ratelimit`), nicht in die App: nur der Proxy sieht die echte Client-Adresse.
+  `POST /bundles/{id}/neighbors` rechnet je Anfrage einige hundert Millisekunden.
 
 ## Lizenz
 

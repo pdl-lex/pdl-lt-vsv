@@ -7,11 +7,14 @@ COPY frontend/ ./
 RUN npm run build
 
 # ---- Stage 2: Backend (FastAPI) + statisches Frontend ----
+# Python bewusst nur auf die Minor-Version festgelegt: Patch-Releases bringen
+# Sicherheitskorrekturen, ohne das Verhalten zu ändern.
 FROM python:3.14-slim
 WORKDIR /app
 
-# uv für Dependency-Management
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
+# uv für Dependency-Management, fest versioniert (reproduzierbare Builds;
+# `latest` würde bei jedem Build eine andere Version holen können).
+COPY --from=ghcr.io/astral-sh/uv:0.8.22 /uv /bin/uv
 
 # Python-Dependencies (ohne Dev-Gruppe). --frozen: exakt der committete Lock.
 # --no-install-project: der Quellcode ist noch nicht da, so bleibt der
@@ -30,6 +33,11 @@ COPY --from=frontend /frontend/dist ./frontend/dist
 # Bind-Mount, analog zu den anderen Apps unter /wb/data/apps/pdl-lt-vsv/).
 RUN mkdir -p /data/bundles
 ENV BUNDLES_DIR=/data/bundles
+
+# Nicht als root laufen. Der Dienst liest nur: die Bundles auf dem Volume
+# müssen für andere lesbar sein (z.B. 644 / Verzeichnisse 755).
+RUN useradd --system --uid 10001 --no-create-home --shell /usr/sbin/nologin vsv
+USER vsv
 
 EXPOSE 8000
 

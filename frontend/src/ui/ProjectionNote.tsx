@@ -18,7 +18,7 @@ const DIMENSIONSREDUKTION_INFO =
   "Raum — für Details anklicken.";
 
 export function ProjectionNote() {
-  const { indexed } = useViz();
+  const indexed = useViz((s) => s.indexed);
   const [open, setOpen] = useState(false);
   if (!indexed) return null;
 

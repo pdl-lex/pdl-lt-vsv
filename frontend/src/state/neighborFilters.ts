@@ -17,6 +17,7 @@
  * er neu (s. Abonnement am Dateiende).
  */
 import { create } from "zustand";
+import { useShallow } from "zustand/react/shallow";
 import {
   fetchNeighborSpace,
   fetchNeighbors,
@@ -28,7 +29,7 @@ import {
 import type { LoadedBundle } from "../data/loader";
 import { withBundleNeighbors, withQueriedNeighbors } from "../data/model";
 import { parseNeighborSpaceMeta, type NeighborSpaceMeta } from "../types/schema";
-import { useViz } from "./store";
+import { pickKeys, useViz } from "./store";
 
 /** Wartezeit nach der letzten Änderung, bevor abgefragt wird. */
 export const QUERY_DEBOUNCE_MS = 400;
@@ -299,6 +300,11 @@ export const useNeighborFilters = create<NeighborFilterState>((set, get) => ({
     else void loadSpace();
   },
 }));
+
+/** Wie `useVizPick`: nur die genannten Felder abonnieren. */
+export function useNeighborFiltersPick<K extends keyof NeighborFilterState>(...keys: K[]): Pick<NeighborFilterState, K> {
+  return useNeighborFilters(useShallow((s) => pickKeys(s, keys)));
+}
 
 const getState = () => useNeighborFilters.getState();
 const setState = useNeighborFilters.setState;

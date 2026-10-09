@@ -11,7 +11,7 @@
  * Zellenauslesung.
  */
 import { useMemo, useState } from "react";
-import { useViz } from "../state/store";
+import { useViz, useVizPick } from "../state/store";
 import { useMode } from "../viz/useMode";
 import { Section } from "../ui/Section";
 import { TargetWords } from "../ui/Legend";
@@ -38,7 +38,7 @@ const SMALL = 208; // Kantenlänge einer Small-Multiple-Matrix
 const LARGE = 520; // Kantenlänge der Detailmatrix
 
 export function MatrizenConfig() {
-  const { indexed } = useViz();
+  const indexed = useViz((s) => s.indexed);
   const { scaleMode, setScaleMode } = useMatrixOptions();
   if (!indexed) return <p className="prose">Erst im Modul „Datenquelle" ein Bundle laden.</p>;
 
@@ -289,7 +289,7 @@ function MatrixDetail({
 }
 
 export function MatrizenMain() {
-  const { indexed, status, selectedEntityIds } = useViz();
+  const { indexed, status, selectedEntityIds } = useVizPick("indexed", "status", "selectedEntityIds");
   const { scaleMode } = useMatrixOptions();
   const { metric, overlapK } = useMetricOptions();
   const mode = useMode();

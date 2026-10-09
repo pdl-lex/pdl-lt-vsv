@@ -11,11 +11,11 @@ from __future__ import annotations
 
 import json
 import os
-from functools import lru_cache
+import threading
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 # Standard: <repo>/backend/bundles, überschreibbar per Env für andere Datenquellen.
@@ -77,11 +77,26 @@ def _summarize(path: Path) -> BundleSummary | None:
     )
 
 
-@lru_cache(maxsize=1)
-def _list_dir_signature() -> tuple:
-    """Verzeichnis-Signatur (Datei + mtime) für simples Caching der Liste."""
-    files = sorted(BUNDLES_DIR.glob("*.json"))
-    return tuple((p.name, p.stat().st_mtime) for p in files)
+# Übersicht je Datei, gültig solange Änderungszeit und Größe gleich bleiben.
+# Ohne Cache würde jeder Aufruf der Liste alle Bundles vollständig parsen.
+_summary_cache: dict[Path, tuple[tuple[int, int], BundleSummary | None]] = {}
+_summary_lock = threading.Lock()
+
+
+def _cached_summary(path: Path) -> BundleSummary | None:
+    try:
+        stat = path.stat()
+    except OSError:
+        return None
+    signature = (stat.st_mtime_ns, stat.st_size)
+    with _summary_lock:
+        hit = _summary_cache.get(path)
+        if hit and hit[0] == signature:
+            return hit[1]
+    summary = _summarize(path)
+    with _summary_lock:
+        _summary_cache[path] = (signature, summary)
+    return summary
 
 
 @router.get("", response_model=list[BundleSummary])
@@ -89,22 +104,22 @@ def list_bundles() -> list[BundleSummary]:
     """Alle im BUNDLES_DIR gefundenen, lesbaren Bundles als Übersicht."""
     if not BUNDLES_DIR.is_dir():
         return []
-    summaries: list[BundleSummary] = []
-    for path in sorted(BUNDLES_DIR.glob("*.json")):
-        summary = _summarize(path)
-        if summary is not None:
-            summaries.append(summary)
-    return summaries
+    paths = sorted(BUNDLES_DIR.glob("*.json"))
+    with _summary_lock:
+        # Gelöschte Dateien nicht ewig im Cache halten
+        for gone in set(_summary_cache) - set(paths):
+            del _summary_cache[gone]
+    return [s for s in (_cached_summary(p) for p in paths) if s is not None]
 
 
 @router.get("/{bundle_id}")
-def get_bundle(bundle_id: str) -> JSONResponse:
+def get_bundle(bundle_id: str) -> FileResponse:
     """Liefert die Roh-JSON eines Bundles unverändert aus.
 
-    Bewusst als Passthrough (kein Re-Serialisieren über Pydantic), damit große
-    Bundles ohne Kopieraufwand und ohne Feldverlust ausgeliefert werden.
+    Echter Passthrough: die Datei wird gestreamt, nicht geparst und neu
+    serialisiert — schneller, ohne Feldverlust, und ein Bundle mit Werten, die
+    strenges JSON nicht kennt (etwa `NaN`), führt nicht zu einem 500 des
+    Servers, sondern zu einer lesbaren Fehlermeldung beim Laden im Frontend.
     """
     path = _bundle_path(bundle_id)
-    with path.open(encoding="utf-8") as fh:
-        data = json.load(fh)
-    return JSONResponse(content=data)
+    return FileResponse(path, media_type="application/json")

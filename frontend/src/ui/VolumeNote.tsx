@@ -4,7 +4,7 @@
  * 3D-Raum) um eine lesbare Zahl — die Kodierung allein macht z.B. freq=48 gegen
  * freq=1358 (Faktor 28) nicht verlässlich unterscheidbar.
  */
-import { useViz } from "../state/store";
+import { useVizPick } from "../state/store";
 import type { TrackSample } from "../data/model";
 import { Icon } from "../design/icons";
 import { InfoTooltip } from "./InfoTooltip";
@@ -27,7 +27,7 @@ function median(werte: number[]): number {
 }
 
 export function VolumeNote() {
-  const { indexed, activeEntityId, sliceT } = useViz();
+  const { indexed, activeEntityId, sliceT } = useVizPick("indexed", "activeEntityId", "sliceT");
   if (!indexed || !activeEntityId) return null;
 
   const sliceIndex = Math.max(0, Math.min(Math.round(sliceT), indexed.sliceCount - 1));

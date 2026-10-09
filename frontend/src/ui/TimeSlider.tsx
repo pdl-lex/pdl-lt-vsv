@@ -4,13 +4,13 @@
  * (`meta.shift_point`). Reine Client-Interaktion, kein Server-Roundtrip.
  */
 import { useEffect, useRef, useState } from "react";
-import { useViz } from "../state/store";
+import { useViz, useVizPick } from "../state/store";
 import { Icon } from "../design/icons";
 
 const SLICES_PER_SECOND = 6;
 
 export function TimeSlider() {
-  const { indexed, sliceT, setSliceT } = useViz();
+  const { indexed, sliceT, setSliceT } = useVizPick("indexed", "sliceT", "setSliceT");
   const [playing, setPlaying] = useState(false);
   const playingRef = useRef(false);
   const rafRef = useRef<number | null>(null);
@@ -37,9 +37,12 @@ export function TimeSlider() {
     if (!playingRef.current) return;
     const dt = (ts - lastTsRef.current) / 1000;
     lastTsRef.current = ts;
-    const cur = useViz.getState().sliceT;
+    // Frisch aus dem Store: wird während des Abspielens ein anderes Bundle
+    // geladen, gilt dessen Länge, nicht die beim Start.
+    const { sliceT: cur, indexed: now } = useViz.getState();
+    const end = Math.max(0, (now?.sliceCount ?? 1) - 1);
     let next = cur + dt * SLICES_PER_SECOND;
-    if (next >= maxT) next = 0; // Schleife
+    if (next >= end) next = 0; // Schleife
     setSliceT(next);
     rafRef.current = requestAnimationFrame(tick);
   };

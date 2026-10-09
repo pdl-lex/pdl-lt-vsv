@@ -67,6 +67,9 @@ export interface IndexedBundle {
    * Seite „Anker“ für die Sitzung änderbar (`withAnchors`). Das Bundle selbst
    * bleibt unverändert (`bundle.anchors`). */
   anchors: Anchor[];
+  /** Anker nach Label, **exakt** (mit Groß-/Kleinschreibung): ob ein Nachbar
+   * ein Anker ist, entscheidet über Label, Cluster und Hervorhebung — im
+   * Deutschen sind `Bedarf` und `bedarf` verschiedene Wörter. */
   anchorByLabel: Map<string, Anchor>;
   /** Koordinaten-Tabelle für Nachbarn, die kein Anker sind (s. `pointForLabel`).
    * Kein eigener Suchraum mehr — ausgewählt wird im vollen Vektorraum beim
@@ -78,8 +81,19 @@ export interface IndexedBundle {
    * Vorrang: kollidiert ein Vokabel-Label mit einer Anker-Anzeigeform (etwa
    * Anker `marode` mit Lemma `marod` neben dem eigenständigen Korpus-Lemma
    * `marode`), gewinnt der beschriftete Anker. Die Pipeline schließt solche
-   * Kollisionen inzwischen aus; die Regel hier hält auch ältere Bundles heil. */
+   * Kollisionen inzwischen aus; die Regel hier hält auch ältere Bundles heil.
+   * Exakt, mit Groß-/Kleinschreibung. */
   pointByLabel: Map<string, Coords3d>;
+  /** Rückfall für `pointForLabel`, nur wenn es keinen exakten Eintrag gibt:
+   * dieselben Positionen nach kleingeschriebenem Label (erster Eintrag gewinnt).
+   * Getrennt von `pointByLabel`, damit ein Alias nie ein anderes, exakt
+   * vorhandenes Wort verdeckt (`bedarf` neben dem Anker `Bedarf`). Gebraucht für
+   * Bundles, deren Nachbar-Labels anders geschrieben sind als ihre Punkte
+   * (SGNS: Nachbar `Sicherheit`, Punkt `sicherheit`). */
+  pointByLowerLabel: Map<string, Coords3d>;
+  /** Positionen der Kandidaten mit eigener Zeitscheibe (SGNS-Suchraum):
+   * Zeitscheiben-ID → Label → Position. Leer ohne solche Kandidaten. */
+  slicePointByLabel: Map<string, Map<string, Coords3d>>;
   /** Die Nachbarlisten, die alle Ansichten zeigen (über `neighborsAt`).
    * Anfangs die vorberechneten aus dem Bundle; nach einer Nachbarabfrage mit
    * Filtern deren Ergebnis (`withQueriedNeighbors`). Das Bundle selbst bleibt
@@ -204,6 +218,30 @@ export function facetKeyOf(facets: Record<string, string>): string {
     .join("&");
 }
 
+/** Größte `freq` (mindestens 1), ohne Spread — der sprengt bei sehr vielen
+ * Zellen die Argumentgrenze der JS-Engine. */
+function maxFreq(cells: readonly Cell[]): number {
+  let max = 1;
+  for (const c of cells) {
+    const f = c.freq ?? 1;
+    if (f > max) max = f;
+  }
+  return max;
+}
+
+/** Position eintragen: exakt nur, wenn noch frei (frühere Einträge haben
+ * Vorrang), kleingeschrieben nur in die Rückfall-Tabelle. */
+function addPoint(
+  exact: Map<string, Coords3d>,
+  lower: Map<string, Coords3d>,
+  label: string,
+  coords: Coords3d,
+): void {
+  if (!exact.has(label)) exact.set(label, coords);
+  const key = label.toLowerCase();
+  if (!lower.has(key)) lower.set(key, coords);
+}
+
 /** Wandelt ein validiertes Bundle in die render-fertige Struktur. */
 export function indexBundle(bundle: Bundle): IndexedBundle {
   const sortedSlices = sortSlices(bundle.time_slices);
@@ -269,18 +307,9 @@ export function indexBundle(bundle: Bundle): IndexedBundle {
   // Positions-Tabelle für die Nachbarlisten. Anker zuerst eintragen, damit sie
   // bei gleichem Text gewinnen (s. `pointByLabel` im Interface).
   const pointByLabel = new Map<string, Coords3d>();
-  for (const a of bundle.anchors) {
-    pointByLabel.set(a.label, a.coords_3d as Coords3d);
-    if (!pointByLabel.has(a.label.toLowerCase())) {
-      pointByLabel.set(a.label.toLowerCase(), a.coords_3d as Coords3d);
-    }
-  }
-  for (const v of bundle.vocab_points) {
-    if (!pointByLabel.has(v.label)) pointByLabel.set(v.label, v.coords_3d as Coords3d);
-    const lower = v.label.toLowerCase();
-    if (!pointByLabel.has(lower)) pointByLabel.set(lower, v.coords_3d as Coords3d);
-  }
-
+  const pointByLowerLabel = new Map<string, Coords3d>();
+  for (const a of bundle.anchors) addPoint(pointByLabel, pointByLowerLabel, a.label, a.coords_3d as Coords3d);
+  for (const v of bundle.vocab_points) addPoint(pointByLabel, pointByLowerLabel, v.label, v.coords_3d as Coords3d);
 
   // Framing über alle sichtbaren Punkte (Anker + Aggregate + Records).
   const allCoords: Coords3d[] = [
@@ -290,8 +319,8 @@ export function indexBundle(bundle: Bundle): IndexedBundle {
   ];
   const { center, scale } = computeFraming(allCoords);
 
-  const aggFreqMax = Math.max(1, ...bundle.aggregates.map((c) => c.freq ?? 1));
-  const recordFreqMax = Math.max(1, ...bundle.records.map((c) => c.freq ?? 1));
+  const aggFreqMax = maxFreq(bundle.aggregates);
+  const recordFreqMax = maxFreq(bundle.records);
 
   return {
     bundle,
@@ -307,6 +336,8 @@ export function indexBundle(bundle: Bundle): IndexedBundle {
     anchorByLabel,
     vocabPoints: bundle.vocab_points,
     pointByLabel,
+    pointByLowerLabel,
+    slicePointByLabel: new Map(),
     neighbors: bundle.neighbors,
     baseNeighbors: bundle.neighbors,
     neighborSource: "bundle",
@@ -329,7 +360,14 @@ export function toWorld(idx: IndexedBundle, c: Coords3d): Coords3d {
 }
 
 /** Interpolierte Roh-Position + freq eines Tracks beim kontinuierlichen Slider-Wert `t`.
- * Funktioniert für Aggregat- (EntityTrack) wie Facetten-Tracks (FacetTrack). */
+ * Funktioniert für Aggregat- (EntityTrack) wie Facetten-Tracks (FacetTrack).
+ *
+ * Interpoliert wird nur zwischen zwei **belegten** Zellen (`freq > 0`). Eine
+ * Zelle mit `freq == 0` zählt wie eine fehlende: ihre Koordinate ist ein
+ * Platzhalter, auf den der Punkt sonst zuwandern würde — Bewegung, für die es
+ * keine Daten gibt. Ist nur eine Seite belegt, gilt die nächstgelegene
+ * Zeitscheibe (wie beim Runden für Nachbarn-Panel und Beleg-Anzeige): ist sie
+ * unbelegt, gibt es keinen Punkt. */
 export function sampleTrackAt(
   track: { samples: (TrackSample | undefined)[] },
   t: number,
@@ -340,8 +378,9 @@ export function sampleTrackAt(
   const i0 = Math.floor(clamped);
   const i1 = Math.min(i0 + 1, n - 1);
   const frac = clamped - i0;
-  const s0 = track.samples[i0];
-  const s1 = track.samples[i1];
+  const belegt = (s: TrackSample | undefined) => (s && s.freq > 0 ? s : undefined);
+  const s0 = belegt(track.samples[i0]);
+  const s1 = belegt(track.samples[i1]);
 
   if (s0 && s1) {
     return {
@@ -366,7 +405,7 @@ export function sampleTrackAt(
           : (s1.kontrast ?? s0.kontrast),
     };
   }
-  const only = s0 ?? s1;
+  const only = frac < 0.5 ? s0 : s1;
   return only
     ? { coords: only.coords, freq: only.freq, sentiment: only.sentiment, kontrast: only.kontrast }
     : null;
@@ -433,12 +472,22 @@ export function withQueriedNeighbors(
     neighbors[entityId] = out;
   }
 
+  // Kandidaten mit eigener Zeitscheibe (SGNS) haben je Scheibe eine andere
+  // Position; die gilt nur dort (`slicePointByLabel`). In die allgemeinen
+  // Tabellen kommen nur Kandidaten, die für alle Scheiben gelten.
   const pointByLabel = new Map(idx.pointByLabel);
+  const pointByLowerLabel = new Map(idx.pointByLowerLabel);
+  const slicePointByLabel = new Map<string, Map<string, Coords3d>>();
   candidates.label.forEach((label, i) => {
     const coords = candidates.coords_3d[i];
-    if (!pointByLabel.has(label)) pointByLabel.set(label, coords);
-    const lower = label.toLowerCase();
-    if (!pointByLabel.has(lower)) pointByLabel.set(lower, coords);
+    const sliceId = candidates.slice?.[i];
+    if (sliceId == null) {
+      addPoint(pointByLabel, pointByLowerLabel, label, coords);
+      return;
+    }
+    let perSlice = slicePointByLabel.get(sliceId);
+    if (!perSlice) slicePointByLabel.set(sliceId, (perSlice = new Map()));
+    if (!perSlice.has(label)) perSlice.set(label, coords);
   });
 
   return {
@@ -447,6 +496,8 @@ export function withQueriedNeighbors(
     baseNeighbors: neighbors,
     neighborSource: "query",
     pointByLabel,
+    pointByLowerLabel,
+    slicePointByLabel,
     maxNeighborK: result.k,
   };
 }
@@ -481,12 +532,7 @@ export function anchorKey(a: Anchor): string {
 }
 
 function indexAnchors(anchors: Anchor[]): Map<string, Anchor> {
-  const byLabel = new Map<string, Anchor>();
-  for (const a of anchors) {
-    byLabel.set(a.label, a);
-    byLabel.set(a.label.toLowerCase(), a); // toleranter NN-Match
-  }
-  return byLabel;
+  return new Map(anchors.map((a) => [a.label, a]));
 }
 
 function clustersOf(anchors: Anchor[]): string[] {
@@ -535,10 +581,11 @@ export function relabelNeighbors(neighbors: Neighbors, shipped: Anchor[], workin
  */
 export function withAnchors(idx: IndexedBundle, anchors: Anchor[]): IndexedBundle {
   const pointByLabel = new Map(idx.pointByLabel);
+  const pointByLowerLabel = new Map(idx.pointByLowerLabel);
   for (const a of anchors) {
+    // Anker haben Vorrang vor allem, was schon eingetragen ist
     pointByLabel.set(a.label, a.coords_3d as Coords3d);
-    const lower = a.label.toLowerCase();
-    if (!pointByLabel.has(lower)) pointByLabel.set(lower, a.coords_3d as Coords3d);
+    addPoint(pointByLabel, pointByLowerLabel, a.label, a.coords_3d as Coords3d);
   }
   return {
     ...idx,
@@ -546,21 +593,31 @@ export function withAnchors(idx: IndexedBundle, anchors: Anchor[]): IndexedBundl
     anchorByLabel: indexAnchors(anchors),
     clusters: clustersOf(anchors),
     pointByLabel,
+    pointByLowerLabel,
     neighbors: relabelNeighbors(idx.baseNeighbors, idx.bundle.anchors, anchors),
   };
 }
 
-/** Anker zu einem NN-Label (exakt, dann case-insensitiv). */
+/** Anker zu einem NN-Label — nur exakt, s. `anchorByLabel`. */
 export function anchorForLabel(idx: IndexedBundle, label: string): Anchor | undefined {
-  return idx.anchorByLabel.get(label) ?? idx.anchorByLabel.get(label.toLowerCase());
+  return idx.anchorByLabel.get(label);
 }
 
-/** Position zu einem NN-Label: erst Anker, dann Vokabel-Punkt (s.
- * `pointByLabel`). `undefined` heißt "dieses Wort hat im Bundle keine
- * Koordinate" — bei den neuen Bundles per Konstruktion ausgeschlossen, bei
- * älteren der Normalfall für alles, was kein Anker ist. */
-export function pointForLabel(idx: IndexedBundle, label: string): Coords3d | undefined {
-  return idx.pointByLabel.get(label) ?? idx.pointByLabel.get(label.toLowerCase());
+/** Position zu einem NN-Label: erst Anker, dann die Position in dieser
+ * Zeitscheibe (SGNS-Kandidaten, falls `sliceIndex` angegeben), dann
+ * Kandidat bzw. Vokabel-Punkt (s. `pointByLabel`), zuletzt ohne
+ * Groß-/Kleinschreibung (`pointByLowerLabel`). `undefined` heißt "dieses Wort
+ * hat im Bundle keine Koordinate" — bei den neuen Bundles per Konstruktion
+ * ausgeschlossen, bei älteren der Normalfall für alles, was kein Anker ist. */
+export function pointForLabel(idx: IndexedBundle, label: string, sliceIndex?: number): Coords3d | undefined {
+  const anchor = idx.anchorByLabel.get(label);
+  if (anchor) return anchor.coords_3d as Coords3d;
+  if (sliceIndex !== undefined) {
+    const sliceId = idx.sortedSlices[sliceIndex]?.id;
+    const inSlice = sliceId !== undefined ? idx.slicePointByLabel.get(sliceId)?.get(label) : undefined;
+    if (inSlice) return inSlice;
+  }
+  return idx.pointByLabel.get(label) ?? idx.pointByLowerLabel.get(label.toLowerCase());
 }
 
 /** Faceted-Search-Prädikat: UND-Verknüpfung über Facetten; leere Auswahl je

@@ -16,7 +16,7 @@
  *                  WANN sich etwas bewegt hat, nicht wie weit es insgesamt kam
  */
 import { useMemo } from "react";
-import { useViz } from "../state/store";
+import { useViz, useVizPick } from "../state/store";
 import { useDriftOptions, type BaselineKind } from "../state/driftOptions";
 import { useMode } from "../viz/useMode";
 import { entityColor } from "../viz/theme";
@@ -42,7 +42,7 @@ const BASELINES: [BaselineKind, string][] = [
 ];
 
 export function DriftConfig() {
-  const { indexed } = useViz();
+  const indexed = useViz((s) => s.indexed);
   const { baselineKind, baselineSlice, setBaselineKind, setBaselineSlice } = useDriftOptions();
   if (!indexed) return <p className="prose">Erst im Modul „Datenquelle" ein Bundle laden.</p>;
 
@@ -138,7 +138,7 @@ function summarize(series: DriftSeries) {
 }
 
 export function DriftMain() {
-  const { indexed, status, selectedEntityIds } = useViz();
+  const { indexed, status, selectedEntityIds } = useVizPick("indexed", "status", "selectedEntityIds");
   const { baselineKind, baselineSlice } = useDriftOptions();
   const { metric, overlapK } = useMetricOptions();
   const mode = useMode();

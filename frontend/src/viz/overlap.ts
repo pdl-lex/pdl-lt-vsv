@@ -217,13 +217,30 @@ export interface PooledList {
   total: number;
 }
 
+/** Top-k-Labels je belegter Scheibe eines Zeitraums (Scheiben ohne Beleg oder Liste fallen weg). */
+function periodLists(idx: IndexedBundle, entityId: string, period: Period, k: number): string[][] {
+  const lists: string[][] = [];
+  for (const i of periodIndices(idx, period)) {
+    if (entityFreqAt(idx, entityId, i) <= 0) continue;
+    const list = neighborsAt(idx, entityId, i);
+    if (list.length > 0) lists.push(list.slice(0, k).map((n) => n.label));
+  }
+  return lists;
+}
+
 /**
  * Eine Nachbarliste für einen ganzen Zeitraum. Gonen et al. trainieren je
  * Korpus ein Modell; hier liegen nur Listen je Scheibe vor, also werden sie per
- * **Rangpunkten (Borda)** zusammengelegt: in einer Liste der Länge L bekommt
- * Rang r (ab 0) L − r Punkte, summiert über die belegten Scheiben. Jede Scheibe
- * hat dabei gleiches Gewicht — ein einzelnes vielbelegtes Halbjahr soll den
- * Zeitraum nicht allein bestimmen. Gleichstand: bester Einzelrang zuerst.
+ * **Rangpunkten (Borda)** zusammengelegt: jede Liste wird auf die ersten k
+ * gekürzt, Rang r (ab 0) bekommt k − r Punkte, summiert über die belegten
+ * Scheiben. Jede Scheibe hat dabei gleiches Gewicht — ein einzelnes
+ * vielbelegtes Halbjahr soll den Zeitraum nicht allein bestimmen. Gleichstand:
+ * bester Einzelrang zuerst.
+ *
+ * Gekürzt wird vor dem Zählen, damit das Ergebnis nur von den Top-k abhängt
+ * und nicht davon, wie lang die gelieferten Listen sind (150 im Bundle, 1000
+ * aus der Abfrage) — sonst gäben dieselben Filter mit und ohne Backend
+ * verschiedene Rankings.
  */
 export function pooledNeighbors(
   idx: IndexedBundle,
@@ -231,40 +248,33 @@ export function pooledNeighbors(
   period: Period,
   k: number,
 ): PooledList {
-  const indices = periodIndices(idx, period);
-  const used = indices.filter(
-    (i) => entityFreqAt(idx, entityId, i) > 0 && neighborsAt(idx, entityId, i).length > 0,
-  );
-  return { labels: pooledFrom(idx, entityId, used, k), used: used.length, total: indices.length };
+  const kk = effectiveK(idx, k);
+  const lists = periodLists(idx, entityId, period, kk);
+  return { labels: pooledFrom(lists, kk), used: lists.length, total: periodIndices(idx, period).length };
 }
 
-/** Borda-Pooling über die gegebenen (belegten) Scheiben. */
-function pooledFrom(idx: IndexedBundle, entityId: string, indices: number[], k: number): string[] {
+/** Borda-Pooling über Listen, die schon auf k gekürzt sind. */
+function pooledFrom(lists: readonly string[][], k: number): string[] {
   const points = new Map<string, number>();
   const best = new Map<string, number>();
-  for (const i of indices) {
-    const list = neighborsAt(idx, entityId, i);
-    const L = list.length;
-    list.forEach((n, r) => {
-      points.set(n.label, (points.get(n.label) ?? 0) + (L - r));
-      best.set(n.label, Math.min(best.get(n.label) ?? Infinity, r));
+  for (const list of lists) {
+    list.forEach((label, r) => {
+      points.set(label, (points.get(label) ?? 0) + (k - r));
+      best.set(label, Math.min(best.get(label) ?? Infinity, r));
     });
   }
   return [...points.keys()]
     .sort((x, y) => points.get(y)! - points.get(x)! || best.get(x)! - best.get(y)!)
-    .slice(0, effectiveK(idx, k));
+    .slice(0, k);
 }
 
 /**
- * Grundrauschen eines Zeitraums als **Split-Half-Überlappung**: die belegten
- * Scheiben abwechselnd auf zwei Hälften verteilt, jede Hälfte wie oben gepoolt,
- * dann verglichen. Abwechselnd statt vorne/hinten, damit ein Trend innerhalb
- * des Zeitraums nicht als Rauschen zählt.
- *
- * Warum nicht einfach Scheibe gegen Scheibe: A↔B vergleicht *gepoolte* Listen,
- * und Pooling glättet. Einzelscheiben schwanken stärker, die Referenz läge
- * systematisch zu tief und jeder Vergleich sähe stabil aus. So stehen auf
- * beiden Seiten gepoolte Listen. `NaN` bei < 2 belegten Scheiben.
+ * Binnen-Überlappung eines Zeitraums (**Split-Half**): die belegten Scheiben
+ * abwechselnd auf zwei Hälften verteilt, jede Hälfte gepoolt, dann verglichen.
+ * Beschreibt, wie stabil das Umfeld *innerhalb* des Zeitraums ist. Als
+ * Vergleichsmaß für A ↔ B taugt sie nicht: die Hälften poolen nur halb so viele
+ * Scheiben und schwanken deshalb stärker (s. `splitBaseline`). `NaN` bei < 2
+ * belegten Scheiben.
  */
 export function withinOverlap(
   idx: IndexedBundle,
@@ -272,13 +282,161 @@ export function withinOverlap(
   period: Period,
   k: number,
 ): number {
-  const used = periodIndices(idx, period).filter(
-    (i) => entityFreqAt(idx, entityId, i) > 0 && neighborsAt(idx, entityId, i).length > 0,
-  );
-  if (used.length < 2) return NaN;
-  const even = pooledFrom(idx, entityId, used.filter((_, n) => n % 2 === 0), k);
-  const odd = pooledFrom(idx, entityId, used.filter((_, n) => n % 2 === 1), k);
+  const kk = effectiveK(idx, k);
+  const lists = periodLists(idx, entityId, period, kk);
+  if (lists.length < 2) return NaN;
+  const even = pooledFrom(lists.filter((_, n) => n % 2 === 0), kk);
+  const odd = pooledFrom(lists.filter((_, n) => n % 2 === 1), kk);
   return overlap(new Set(even), new Set(odd));
+}
+
+/** Höchstzahl der Aufteilungen für `splitBaseline`; darunter wird vollständig aufgezählt. */
+export const BASELINE_SPLITS = 64;
+
+/** Kleiner deterministischer Zufallsgenerator (mulberry32) — gleiche Daten, gleiche Zahl. */
+function seededRandom(seed: number): () => number {
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** Anzahl der Teilmengen der Größe r aus n, gekappt bei `cap + 1`. */
+function choose(n: number, r: number, cap: number): number {
+  let c = 1;
+  for (let i = 1; i <= r; i++) {
+    c = (c * (n - r + i)) / i;
+    if (c > cap) return cap + 1;
+  }
+  return Math.round(c);
+}
+
+/** Alle Teilmengen {0…n−1} der Größe r (nur für kleine Anzahlen aufgerufen). */
+function combinations(n: number, r: number): number[][] {
+  const out: number[][] = [];
+  const pick: number[] = [];
+  const rec = (start: number) => {
+    if (pick.length === r) {
+      out.push([...pick]);
+      return;
+    }
+    for (let i = start; i <= n - (r - pick.length); i++) {
+      pick.push(i);
+      rec(i + 1);
+      pick.pop();
+    }
+  };
+  rec(0);
+  return out;
+}
+
+/**
+ * Grundrauschen für A ↔ B als **Permutations-Baseline**: die belegten Scheiben
+ * beider Zeiträume werden ohne Rücksicht auf ihre Zugehörigkeit auf zwei
+ * Gruppen verteilt, so groß wie A und B, beide gepoolt und verglichen —
+ * Mittelwert über alle Aufteilungen (bis `BASELINE_SPLITS`, sonst eine feste
+ * Zufallsauswahl). Das ist die Überlappung, die ohne Unterschied zwischen A und
+ * B zu erwarten wäre, bei **derselben Pooling-Tiefe** wie der echte Vergleich.
+ * Eine Split-Half-Referenz innerhalb der Zeiträume poolt nur halb so viele
+ * Scheiben, liegt deshalb systematisch zu tief und ließe Wandel kleiner
+ * erscheinen. `NaN`, wenn ein Zeitraum leer ist.
+ */
+export function splitBaseline(
+  listsA: readonly string[][],
+  listsB: readonly string[][],
+  k: number,
+  maxSplits: number = BASELINE_SPLITS,
+): number {
+  const all = [...listsA, ...listsB];
+  const n = all.length;
+  const r = listsA.length;
+  if (r === 0 || listsB.length === 0) return NaN;
+
+  // Labels → Ganzzahlen: hier wird bis zu BASELINE_SPLITS-mal gepoolt, das
+  // muss ohne Map-Zugriffe und Vergleichsfunktionen auskommen.
+  const ids = new Map<string, number>();
+  const encoded = all.map((list) =>
+    Int32Array.from(list.slice(0, k), (label) => {
+      let id = ids.get(label);
+      if (id === undefined) {
+        id = ids.size;
+        ids.set(label, id);
+      }
+      return id;
+    }),
+  );
+  const V = ids.size;
+  const points = new Float64Array(V);
+  const best = new Int32Array(V);
+  const inA = new Uint8Array(V);
+
+  /** Borda wie `pooledFrom`, Ergebnis als IDs; Gleichstand: bester Rang, dann ID. */
+  const pool = (members: number[]): Int32Array => {
+    points.fill(0);
+    best.fill(k);
+    for (const m of members) {
+      const list = encoded[m];
+      for (let rank = 0; rank < list.length; rank++) {
+        const id = list[rank];
+        points[id] += k - rank;
+        if (rank < best[id]) best[id] = rank;
+      }
+    }
+    // Ein Sortierschlüssel je Label (Punkte, dann Rang, dann ID), ganzzahlig
+    // und < 2^53, damit die native Sortierung von Float64Array reicht.
+    const keys: number[] = [];
+    for (let id = 0; id < V; id++) {
+      if (points[id] > 0) keys.push((points[id] * (k + 1) + (k - best[id])) * V + (V - 1 - id));
+    }
+    const sorted = Float64Array.from(keys).sort();
+    const take = Math.min(k, sorted.length);
+    const top = new Int32Array(take);
+    for (let i = 0; i < take; i++) top[i] = V - 1 - (sorted[sorted.length - 1 - i] % V);
+    return top;
+  };
+
+  const value = (groupA: Set<number>) => {
+    const a: number[] = [];
+    const b: number[] = [];
+    for (let i = 0; i < n; i++) (groupA.has(i) ? a : b).push(i);
+    const topA = pool(a);
+    const topB = pool(b);
+    const denom = Math.min(topA.length, topB.length);
+    if (denom === 0) return NaN;
+    inA.fill(0);
+    for (const id of topA) inA[id] = 1;
+    let shared = 0;
+    for (const id of topB) shared += inA[id];
+    return shared / denom;
+  };
+
+  let sum = 0;
+  let count = 0;
+  const add = (v: number) => {
+    if (Number.isFinite(v)) {
+      sum += v;
+      count++;
+    }
+  };
+  if (choose(n, r, maxSplits) <= maxSplits) {
+    for (const combo of combinations(n, r)) add(value(new Set(combo)));
+  } else {
+    const rand = seededRandom(n * 7919 + r);
+    const order = all.map((_, i) => i);
+    for (let s = 0; s < maxSplits; s++) {
+      // Teilweises Fisher-Yates: die ersten r Positionen sind eine Zufallsauswahl
+      for (let i = 0; i < r; i++) {
+        const j = i + Math.floor(rand() * (n - i));
+        [order[i], order[j]] = [order[j], order[i]];
+      }
+      add(value(new Set(order.slice(0, r))));
+    }
+  }
+  return count > 0 ? sum / count : NaN;
 }
 
 export interface ChangeRow {
@@ -286,6 +444,8 @@ export interface ChangeRow {
   label: string;
   /** Überlappung der gepoolten Listen A ↔ B; `NaN`, wenn ein Zeitraum leer ist. */
   between: number;
+  /** Erwartete Überlappung ohne Unterschied zwischen A und B (`splitBaseline`). */
+  baseline: number;
   withinA: number;
   withinB: number;
   a: PooledList;
@@ -308,13 +468,16 @@ export function buildChangeRanking(
   const kk = effectiveK(idx, k);
   const rows = entityIds.map((entityId): ChangeRow => {
     const track = idx.tracks.find((t) => t.entity.id === entityId);
-    const a = pooledNeighbors(idx, entityId, periodA, kk);
-    const b = pooledNeighbors(idx, entityId, periodB, kk);
+    const listsA = periodLists(idx, entityId, periodA, kk);
+    const listsB = periodLists(idx, entityId, periodB, kk);
+    const a: PooledList = { labels: pooledFrom(listsA, kk), used: listsA.length, total: periodIndices(idx, periodA).length };
+    const b: PooledList = { labels: pooledFrom(listsB, kk), used: listsB.length, total: periodIndices(idx, periodB).length };
     const diff = a.labels.length > 0 && b.labels.length > 0 ? diffLists(a.labels, b.labels, kk) : null;
     return {
       entityId,
       label: track?.entity.label ?? entityId,
       between: diff ? diffOverlap(diff) : NaN,
+      baseline: diff ? splitBaseline(listsA, listsB, kk) : NaN,
       withinA: withinOverlap(idx, entityId, periodA, kk),
       withinB: withinOverlap(idx, entityId, periodB, kk),
       a,

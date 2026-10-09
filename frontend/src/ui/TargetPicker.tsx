@@ -4,10 +4,12 @@
  * eingeblendeten Zielwörter; ein Klick auf einen Punkt im 3D-Bild setzt die
  * Auswahl ebenfalls.
  */
-import { useViz } from "../state/store";
+import { useVizPick } from "../state/store";
 
 export function TargetPicker() {
-  const { indexed, selectedEntityIds, activeEntityId, setActiveEntity } = useViz();
+  const { indexed, selectedEntityIds, activeEntityId, setActiveEntity } = useVizPick(
+    "indexed", "selectedEntityIds", "activeEntityId", "setActiveEntity",
+  );
   if (!indexed) return null;
 
   const options = indexed.tracks

@@ -14,7 +14,7 @@
  * *Gegenübers* — dieselbe Farbe wie überall sonst im Werkzeug.
  */
 import { useMemo } from "react";
-import { useViz } from "../state/store";
+import { useVizPick } from "../state/store";
 import { useMode } from "../viz/useMode";
 import { entityColor } from "../viz/theme";
 import { similaritySourceOf } from "../viz/similarity";
@@ -25,7 +25,9 @@ import { TargetWords } from "../ui/Legend";
 import { SourceNote } from "../ui/SourceNote";
 
 export function PaareConfig() {
-  const { indexed, activeEntityId, setActiveEntity } = useViz();
+  const { indexed, activeEntityId, setActiveEntity } = useVizPick(
+    "indexed", "activeEntityId", "setActiveEntity",
+  );
   if (!indexed) return <p className="prose">Erst im Modul „Datenquelle" ein Bundle laden.</p>;
 
   return (
@@ -75,7 +77,9 @@ export function PaareConfig() {
 }
 
 export function PaareMain() {
-  const { indexed, status, selectedEntityIds, activeEntityId } = useViz();
+  const { indexed, status, selectedEntityIds, activeEntityId } = useVizPick(
+    "indexed", "status", "selectedEntityIds", "activeEntityId",
+  );
   const mode = useMode();
 
   // Bezugswort: das aktive Wort; falls keines gesetzt ist, das erste im Bundle.

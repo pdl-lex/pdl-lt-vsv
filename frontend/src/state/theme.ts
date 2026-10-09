@@ -11,8 +11,12 @@ const STORAGE_KEY = "vsv-theme";
 
 function initialMode(): Mode {
   if (typeof window === "undefined") return "light";
-  const saved = window.localStorage.getItem(STORAGE_KEY);
-  if (saved === "light" || saved === "dark") return saved;
+  try {
+    const saved = window.localStorage.getItem(STORAGE_KEY);
+    if (saved === "light" || saved === "dark") return saved;
+  } catch {
+    /* Speicher gesperrt (Websitedaten blockiert): dann die Systemvorliebe */
+  }
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
@@ -37,7 +41,11 @@ export const useTheme = create<ThemeState>((set, get) => {
     toggle: () => get().setMode(get().mode === "dark" ? "light" : "dark"),
     setMode: (m) => {
       apply(m);
-      if (typeof window !== "undefined") window.localStorage.setItem(STORAGE_KEY, m);
+      try {
+        if (typeof window !== "undefined") window.localStorage.setItem(STORAGE_KEY, m);
+      } catch {
+        /* Speicher nicht verfügbar: die Wahl gilt dann nur für diese Sitzung */
+      }
       set({ mode: m });
     },
   };

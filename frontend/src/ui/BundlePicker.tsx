@@ -8,11 +8,13 @@
  * mit eigenen Filtern gibt es deshalb nur für die fertigen Bundles.
  */
 import { useRef, useState } from "react";
-import { useViz } from "../state/store";
+import { useVizPick } from "../state/store";
 import { Icon } from "../design/icons";
 
 export function BundlePicker() {
-  const { list, listError, loaded, status, openApiBundle, openFiles } = useViz();
+  const { list, listError, loaded, status, openApiBundle, openFiles } = useVizPick(
+    "list", "listError", "loaded", "status", "openApiBundle", "openFiles",
+  );
   const fileInput = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
 

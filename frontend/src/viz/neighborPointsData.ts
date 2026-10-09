@@ -16,7 +16,7 @@
  * Reihenfolge aus `neighbors`. Dass die Treffer im Bild verstreut liegen statt
  * um das Zielwort zu clustern, ist nicht der Fehler, sondern der Befund.
  */
-import { entityFreqAt, neighborsAt, pointForLabel, toWorld, type IndexedBundle } from "../data/model";
+import { anchorForLabel, entityFreqAt, neighborsAt, pointForLabel, toWorld, type IndexedBundle } from "../data/model";
 import type { Coords3d } from "../types/schema";
 
 export interface NeighborPoint {
@@ -60,7 +60,7 @@ export function neighborPointsAt(
 
   for (let i = 0; i < Math.min(k, neighbors.length); i++) {
     const n = neighbors[i];
-    const coords = pointForLabel(idx, n.label);
+    const coords = pointForLabel(idx, n.label, sliceIndex);
     if (!coords) continue; // kein Punkt im Bundle -> nicht zeichenbar
     out.push({
       label: n.label,
@@ -68,7 +68,7 @@ export function neighborPointsAt(
       group: n.group,
       rank: i + 1,
       pos: toWorld(idx, coords),
-      isAnchor: !!idx.anchorByLabel.get(n.label) || !!idx.anchorByLabel.get(n.label.toLowerCase()),
+      isAnchor: !!anchorForLabel(idx, n.label),
     });
   }
   return out;

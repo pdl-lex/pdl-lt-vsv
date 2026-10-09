@@ -22,7 +22,7 @@ import os
 import threading
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
 import numpy as np
 import polars as pl
@@ -366,12 +366,21 @@ def get_neighbor_space(bundle_id: str) -> JSONResponse:
     })
 
 
+# Grenzen für die Abfrage, damit eine einzelne Anfrage den Server nicht mit
+# riesigen Listen beschäftigt (zusätzlich zur Größengrenze in main.py).
+MAX_STOPWORDS = 100_000
+MAX_WORD_LENGTH = 200
+MAX_FILTERS = 100
+
+
 class NeighborQuery(BaseModel):
     k: int = Field(ge=1, le=K_MAX)
     # Spalte → Wert; fehlende Spalten = Voreinstellung, None = Filter aus
-    filters: dict[str, Any] = {}
+    filters: dict[str, Any] = Field(default={}, max_length=MAX_FILTERS)
     # None = mitgelieferte Liste
-    stopwords: list[str] | None = None
+    stopwords: list[Annotated[str, Field(max_length=MAX_WORD_LENGTH)]] | None = Field(
+        default=None, max_length=MAX_STOPWORDS
+    )
 
 
 @router.post("/{bundle_id}/neighbors")

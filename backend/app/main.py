@@ -11,9 +11,10 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .bundles import router as bundles_router
@@ -25,15 +26,40 @@ app = FastAPI(
     description="Serving-Layer für diachrone Vektor-Bundles.",
 )
 
-# Dev: Vite läuft auf 5173 und proxyt /bundles hierher; für den direkten Zugriff
-# (z.B. curl, andere Origins) trotzdem CORS offen halten. Per Env einschränkbar.
-_origins = os.environ.get("CORS_ORIGINS", "*").split(",")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[o.strip() for o in _origins],
-    allow_methods=["GET", "POST"],
-    allow_headers=["*"],
-)
+# CORS nur, wenn ausdrücklich gewünscht: Frontend und API liegen in Produktion
+# unter derselben Origin, im Dev-Betrieb proxyt Vite; curl braucht kein CORS.
+# Andere Origins per Env freigeben, z.B. CORS_ORIGINS=https://example.org.
+_origins = [o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if o.strip()]
+if _origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_origins,
+        allow_methods=["GET", "POST"],
+        allow_headers=["Content-Type"],
+    )
+
+# Obergrenze für Anfragekörper (POST /bundles/{id}/neighbors: Filter und
+# Stoppwortliste). 2 MB reichen für rund 100.000 Stoppwörter.
+MAX_BODY_BYTES = int(os.environ.get("MAX_BODY_BYTES", str(2 * 1024 * 1024)))
+
+
+@app.middleware("http")
+async def limit_body_size(request: Request, call_next):
+    """Zu große Anfragekörper abweisen, bevor sie gelesen und geparst werden.
+
+    Ohne `Content-Length` ließe sich die Länge erst beim Lesen feststellen;
+    Browser senden sie bei `fetch` mit Text-Body immer, also wird sie verlangt.
+    """
+    if request.method in ("POST", "PUT", "PATCH"):
+        length = request.headers.get("content-length")
+        if length is None:
+            return JSONResponse({"detail": "Content-Length fehlt."}, status_code=411)
+        if not length.isdigit() or int(length) > MAX_BODY_BYTES:
+            return JSONResponse(
+                {"detail": f"Anfrage zu groß (höchstens {MAX_BODY_BYTES} Bytes)."}, status_code=413
+            )
+    return await call_next(request)
+
 # Nachbarlisten mit k = 1000 sind mehrere MB JSON; komprimiert ein Bruchteil.
 # Stufe 5 statt der Voreinstellung 9: bei 3,6 MB 86 statt 394 ms, Ergebnis
 # praktisch gleich groß (1,22 gegen 1,21 MB, gemessen 2026-10-06).

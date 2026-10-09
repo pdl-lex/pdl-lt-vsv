@@ -4,6 +4,7 @@
  * Hover) lebt komplett hier im Client – nie ein Server-Roundtrip (specs.md §3).
  */
 import { create } from "zustand";
+import { useShallow } from "zustand/react/shallow";
 import { fetchBundleList, type BundleSummary } from "../data/apiClient";
 import { loadFromApi, loadFromFile, pickBundleFile, type LoadedBundle } from "../data/loader";
 import { indexBundle, type IndexedBundle } from "../data/model";
@@ -14,9 +15,9 @@ type Status = "idle" | "loading" | "ready" | "error";
  * Facettenwert (records); Streuung = facettenaufgelöste Punktwolke (Unsicherheit). */
 export type ViewMode = "aggregat" | "facettiert" | "streuung";
 
-/** Startlänge der Nachbarliste. 8 war bis zur Umstellung auf lange Listen die
- * fest im Bundle stehende Zahl — als Startwert bleibt die Ansicht damit
- * vertraut, und ältere Bundles (die genau 8 liefern) verhalten sich unverändert. */
+/** Startlänge der Nachbarliste im Bild. Klein genug, dass die Szene lesbar
+ * bleibt; ältere Bundles mit kürzeren Listen (8) begrenzen den Wert von selbst
+ * (`applyLoaded`). */
 export const NEIGHBOR_K_DEFAULT = 10;
 /** Obergrenze des k-Reglers, unabhängig von der Listenlänge (bis 1000). */
 export const NEIGHBOR_K_MAX = 100;
@@ -91,6 +92,11 @@ function applyLoaded(loaded: LoadedBundle) {
   };
 }
 
+/** Zähler der Ladevorgänge: nur der zuletzt gestartete darf sein Ergebnis
+ * einsetzen. Sonst überschreibt eine langsame ältere Antwort (z.B. das
+ * automatische Öffnen beim Start) ein inzwischen gewähltes Bundle. */
+let loadSeq = 0;
+
 export const useViz = create<VizState>((set, get) => ({
   list: [],
   listError: null,
@@ -119,23 +125,9 @@ export const useViz = create<VizState>((set, get) => ({
     }
   },
 
-  openApiBundle: async (id) => {
-    set({ status: "loading", error: null });
-    try {
-      set(applyLoaded(await loadFromApi(id)));
-    } catch (err) {
-      set({ status: "error", error: (err as Error).message });
-    }
-  },
+  openApiBundle: (id) => load(() => loadFromApi(id)),
 
-  openFiles: async (files) => {
-    set({ status: "loading", error: null });
-    try {
-      set(applyLoaded(await loadFromFile(pickBundleFile(files))));
-    } catch (err) {
-      set({ status: "error", error: (err as Error).message });
-    }
-  },
+  openFiles: (files) => load(() => loadFromFile(pickBundleFile(files))),
 
   setSliceT: (t) => set({ sliceT: t }),
   setActiveEntity: (id) => set({ activeEntityId: id }),
@@ -185,3 +177,31 @@ export const useViz = create<VizState>((set, get) => ({
     }),
   clearAllFacets: () => set({ facetFilters: {} }),
 }));
+
+/**
+ * Mehrere Felder des Stores abonnieren, aber nur diese: die Komponente rendert
+ * neu, wenn sich eines davon ändert — nicht bei jeder Änderung irgendwo im
+ * Store. Wichtig wegen `sliceT`, das sich beim Abspielen in jedem Frame ändert.
+ */
+export function useVizPick<K extends keyof VizState>(...keys: K[]): Pick<VizState, K> {
+  return useViz(useShallow((s) => pickKeys(s, keys)));
+}
+
+/** Die genannten Felder eines Objekts (Grundlage der `use…Pick`-Hooks). */
+export function pickKeys<S extends object, K extends keyof S>(s: S, keys: readonly K[]): Pick<S, K> {
+  const out = {} as Pick<S, K>;
+  for (const k of keys) out[k] = s[k];
+  return out;
+}
+
+/** Ein Bundle laden und einsetzen — es sei denn, inzwischen wurde ein anderes angefordert. */
+async function load(fetchBundle: () => Promise<LoadedBundle>): Promise<void> {
+  const seq = ++loadSeq;
+  useViz.setState({ status: "loading", error: null });
+  try {
+    const loaded = await fetchBundle();
+    if (seq === loadSeq) useViz.setState(applyLoaded(loaded));
+  } catch (err) {
+    if (seq === loadSeq) useViz.setState({ status: "error", error: (err as Error).message });
+  }
+}

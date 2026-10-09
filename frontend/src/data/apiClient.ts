@@ -37,7 +37,14 @@ export async function fetchBundleRaw(id: string): Promise<unknown> {
   if (!res.ok) {
     throw new Error(`Bundle "${id}" konnte nicht geladen werden (HTTP ${res.status}).`);
   }
-  return await res.json();
+  // Das Backend reicht die Datei unverändert durch; ungültiges JSON (etwa `NaN`)
+  // fällt erst hier auf.
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    throw new Error(`Bundle "${id}" ist kein gültiges JSON: ${(err as Error).message}`);
+  }
 }
 
 // ---------------------------------------------------------------------------
