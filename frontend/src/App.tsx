@@ -7,6 +7,7 @@
  * kommt weiterhin aus dem geladenen Bundle, alles Werkzeugspezifische aus
  * `modules/`.
  */
+import { useEffect } from "react";
 import { useViz } from "./state/store";
 import { useWorkbench } from "./state/workbench";
 import { moduleById } from "./modules/registry";
@@ -15,29 +16,41 @@ import { Rail } from "./ui/Rail";
 import { StatusBar } from "./ui/StatusBar";
 
 export default function App() {
-  const { error } = useViz();
+  const { error, loadList } = useViz();
   const activeId = useWorkbench((s) => s.activeId);
   const railPinned = useWorkbench((s) => s.railPinned);
   const mod = moduleById(activeId);
 
+  // Bundle-Liste beim Start holen (öffnet das erste Bundle), unabhängig davon,
+  // auf welcher Seite die App startet.
+  useEffect(() => {
+    void loadList();
+  }, [loadList]);
+
   return (
-    <div className={`app ${railPinned ? "app--railpinned" : ""} ${mod.Footer ? "app--footer" : ""}`}>
+    <div
+      className={`app ${railPinned ? "app--railpinned" : ""} ${mod.Footer ? "app--footer" : ""} ${
+        mod.Config ? "" : "app--nocfg"
+      }`}
+    >
       <Header />
       <Rail />
 
-      <aside className="cfg">
-        <div className="cfg__module">
-          <div className="lt-eyebrow">{mod.eyebrow}</div>
-          <div className="cfg__moduletitle">
-            <h1>{mod.title}</h1>
+      {mod.Config && (
+        <aside className="cfg">
+          <div className="cfg__module">
+            <div className="lt-eyebrow">{mod.eyebrow}</div>
+            <div className="cfg__moduletitle">
+              <h1>{mod.title}</h1>
+            </div>
+            {mod.description && <p className="cfg__moduledesc">{mod.description}</p>}
           </div>
-          {mod.description && <p className="cfg__moduledesc">{mod.description}</p>}
-        </div>
 
-        <div className="cfg__scroll">
-          <mod.Config />
-        </div>
-      </aside>
+          <div className="cfg__scroll">
+            <mod.Config />
+          </div>
+        </aside>
+      )}
 
       <main className="main">
         <mod.Main />

@@ -20,7 +20,7 @@ export function Header() {
       <Logo size={18} />
       <span className="hdr__brand">LexoTerm Tools</span>
       <span className="hdr__slash">/</span>
-      <span className="hdr__tool">Vektor-Viz</span>
+      <span className="hdr__tool" title="Visualisierung Semantischer Vektoren">VSV</span>
       <span className="hdr__slash">/</span>
       <span className="hdr__tool">{moduleById(activeId).title}</span>
       {indexed && (

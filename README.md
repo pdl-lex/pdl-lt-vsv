@@ -1,5 +1,5 @@
 # pdl-lt-vsv
-Visualisierungstool für **diachrone Vektor-Datensätze** – im Geist des TensorFlow
+**VSV – Visualisierung Semantischer Vektoren.** Visualisierungstool für **diachrone Vektor-Datensätze** – im Geist des TensorFlow
 Projectors, aber mit der **Zeit als wichtigster Achse**. Primärer Anwendungsfall
 ist das DNB-Zeitenwende-Projekt (Wandel deutschen Militär-/Verteidigungsvokabulars
 2010–2025); das Tool ist aber **domänenunabhängig** und rendert jeden Datensatz im
@@ -13,11 +13,13 @@ Datengenerierung liegt im separaten Repo `pdl-lt-vsv-pipeline`; dort beschreibt
 ## Aktueller Stand
 
 Eine **Workbench mit mehreren Werkzeugen** über demselben Bundle. Navigation
-über die Icon-Rail links. Das Bundle wird einmal geladen und von allen Modulen geteilt — ein
-Modulwechsel verliert weder Auswahl noch Zeitposition.
+über die Icon-Rail links; das ⓘ unten öffnet die Info-Seite (Quellen, Methoden,
+Software, Impressum; Esc schließt sie). Die App startet auf der Einführung. Das
+Bundle wird einmal geladen und von allen Modulen geteilt — ein Modulwechsel verliert weder Auswahl noch Zeitposition.
 
 | Modul | Was es zeigt |
 |---|---|
+| **Einführung** | Startseite: was das Werkzeug zeigt, wie man loslegt, Sprung zu jeder Visualisierung |
 | **Datenquelle** | Bundle laden und prüfen: Projektion, Zeitraum, Facetten, Belegung je Zielwort |
 | **Filter für nächste Nachbarn** | Welche Wörter als Nachbarn infrage kommen (Wortart, Mindestbelegung, Stoppwörter …); gilt in allen Modulen |
 | **Anker** | Welche Wörter als beschriftete Landmarken stehen, mit Label und Cluster; ergänzen, entfernen, importieren, exportieren (nur für die Sitzung) |
@@ -31,8 +33,10 @@ Modulwechsel verliert weder Auswahl noch Zeitposition.
 ### Datenquelle
 
 - **Domänenunabhängiger Bundle-Loader** mit Laufzeit-Validierung (zod). Zwei
-  gleichwertige Quellen hinter einer Schnittstelle: Backend-**Picker** und
-  **Datei öffnen / Drag-and-Drop** beliebiger Schema-JSONs.
+  gleichwertige Quellen hinter einer Schnittstelle: **fertiges Bundle wählen**
+  (Backend-Picker) oder **eigenes Bundle hochladen** (Dateiauswahl oder
+  Drag-and-Drop einer Schema-JSON). Das eigene Bundle wird nur im Browser
+  geöffnet; mitgewählte `.vectors.npy`/`.index.parquet` werden ignoriert.
 - **Bundle-Übersicht**: Kennzahlen, Projektionsverfahren, Facetten-Schema und
   ein Belegungsbalken je Zielwort (Zeitscheiben mit `freq > 0`). Macht dünne
   Korpusstellen sichtbar, bevor man sie visualisiert.
@@ -86,7 +90,7 @@ Nachbarschafts-Fluss.
   Kopie (ergänzen, entfernen, als Textdatei herunter- und hochladen, auf die
   mitgelieferte Liste zurücksetzen). Abgleich über das Lemma. Die geänderte
   Liste bleibt je Bundle im Browser gespeichert.
-- **Rückfall:** Ohne Suchraum, bei einer aus einer Datei geöffneten Bundle-Datei
+- **Rückfall:** Ohne Suchraum, bei einem selbst hochgeladenen Bundle
   oder wenn das Backend nicht antwortet, gelten die vorberechneten `neighbors`
   des Bundles, mit Hinweis. Sie entsprechen genau den Voreinstellungen.
 
@@ -302,7 +306,8 @@ Schema gegen die Demo-Bundles, Rechenschicht inkl. Überlappung, Nachbar-Filter)
 
 ## Eigene Datensätze anzeigen
 
-- **Ad-hoc:** JSON per „Datei öffnen…" wählen oder in den Header ziehen.
+- **Ad-hoc:** JSON per „Eigenes Bundle hochladen…" wählen oder auf die Auswahl
+  ziehen. Nachbar-Filter gelten dann nur mit den Voreinstellungen.
 - **Dauerhaft:** JSON nach `backend/bundles/` legen (nicht im Git, siehe unten) → erscheint im Picker.
   Für Nachbar-Filter die Suchraum-Dateien aus `meta.neighbor_space`
   (`.vectors.npy`, `.index.parquet`) daneben legen; danach `uv run pytest`,
@@ -327,3 +332,9 @@ docker run -p 8000:8000 -v /pfad/zu/bundles:/data/bundles pdl-lt-vsv
   git-ignoriert und dient nur der lokalen Entwicklung.
 - `FRONTEND_DIST` (Pfad des gebauten Frontends), `CORS_ORIGINS` (Standard `*`)
   und `NEIGHBORS_K_MAX` sind per Env überschreibbar. Health-Check: `GET /health`.
+
+## Lizenz
+
+Quellcode und Dokumentation: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), siehe
+[`LICENSE`](LICENSE). Für die Datensätze gilt die Lizenz ihrer Quelle
+(`meta.source` im Bundle).

@@ -1,4 +1,4 @@
-"""FastAPI-Einstiegspunkt für das Vektor-Viz-Backend.
+"""FastAPI-Einstiegspunkt für das VSV-Backend.
 
 Serving-Layer für statische Bundles (siehe specs.md §3). Reine UI-Interaktion
 (Slider, Hover, Trajektorien) geht nie hierher – nur Bundle-Laden und

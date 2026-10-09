@@ -1,4 +1,4 @@
-/* Vektor-Viz — Chrome im LexoTerm-Werkzeug-Look. Tokens in styles/tokens.css,
+/* VSV — Chrome im LexoTerm-Werkzeug-Look. Tokens in styles/tokens.css,
    3D-Farben in viz/theme.ts. Hell/Dunkel über [data-theme] (state/theme.ts). */
 
 * { box-sizing: border-box; }
@@ -48,6 +48,13 @@ button, input, select, textarea { font-family: inherit; }
     "foot foot foot"
     "stat stat stat";
 }
+/* Seiten ohne Konfigurator (Einführung, Info): Hauptbereich über beide Spalten. */
+.app--nocfg {
+  grid-template-areas:
+    "head head head"
+    "rail main main"
+    "stat stat stat";
+}
 
 /* ── Modul-Rail ───────────────────────────────────────────────────────────── */
 .rail {
@@ -71,6 +78,10 @@ button, input, select, textarea { font-family: inherit; }
 }
 .rail__count { position: absolute; top: 2px; right: 3px; font-size: 9px; color: var(--lt-fg-4); }
 .rail__glyph--active .rail__count { color: var(--lt-primary); }
+.rail__spacer { flex: 1; }
+.rail__glyph--btn { background: transparent; cursor: pointer; padding: 0; }
+.rail__glyph--btn:hover { color: var(--lt-fg-1); background: var(--lt-bg-2); }
+.rail__glyph--btn.rail__glyph--active:hover { color: var(--lt-primary); background: var(--lt-primary-soft); }
 
 .rail__flyout {
   position: absolute; top: 0; left: 0; bottom: 0; width: 248px;
@@ -82,7 +93,7 @@ button, input, select, textarea { font-family: inherit; }
 }
 .rail__flyout--open { opacity: 1; transform: none; pointer-events: auto; }
 /* Angeheftet ist die Rail Teil des Grids, kein schwebendes Flyout. */
-.rail--pinned .rail__flyout { position: relative; width: 100%; border-right: none; box-shadow: none; }
+.rail--pinned .rail__flyout { position: relative; width: 100%; height: 100%; border-right: none; box-shadow: none; }
 
 .rail__head {
   height: 44px; flex: none; display: flex; align-items: center; gap: 8px;
@@ -106,6 +117,16 @@ button, input, select, textarea { font-family: inherit; }
 }
 .rail__grouphead--active { color: var(--lt-fg-1); }
 .rail__grouphead--active svg { color: var(--lt-primary); }
+/* Gruppenkopf als eigener Eintrag (Einführung, Informationen). */
+.rail__grouphead--btn {
+  width: 100%; text-align: left; cursor: pointer; font-family: inherit;
+  background: transparent; border: none; border-radius: var(--lt-r-sm);
+}
+.rail__grouphead--btn:hover { color: var(--lt-fg-1); background: var(--lt-bg-2); }
+.rail__grouphead--current { background: var(--lt-primary-soft); color: var(--lt-primary); }
+.rail__grouphead--current svg { color: var(--lt-primary); }
+.rail__grouphead--current:hover { color: var(--lt-primary); background: var(--lt-primary-soft); }
+.rail__foot { flex: none; padding: 8px; border-top: 1px solid var(--lt-line-1); }
 .rail__item {
   display: block; width: 100%; text-align: left; cursor: pointer;
   font: inherit; font-size: 12.5px; padding: 5px 8px 5px 34px;
@@ -207,7 +228,19 @@ button, input, select, textarea { font-family: inherit; }
   color: var(--lt-fg-2); font-weight: 500;
 }
 .picker__file:hover { border-color: var(--lt-line-2); background: var(--lt-bg-2); }
-.picker__hint { font-size: 11px; color: var(--lt-fg-3); text-align: center; }
+.picker__label { font-size: 11px; font-weight: 600; color: var(--lt-fg-2); }
+.picker__or {
+  display: flex; align-items: center; gap: 8px; margin: 4px 0;
+  font-size: 11px; color: var(--lt-fg-3);
+}
+.picker__or::before, .picker__or::after {
+  content: ""; flex: 1; border-top: 1px solid var(--lt-line-1);
+}
+.picker__hint { font-size: 11px; color: var(--lt-fg-3); }
+.picker__current {
+  font-size: 11px; color: var(--lt-fg-2);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .picker__status { font-size: 11px; color: var(--lt-primary); }
 .picker__error { font-size: 11px; color: var(--lt-warn); }
 
@@ -699,6 +732,28 @@ button, input, select, textarea { font-family: inherit; }
 .chartleg__item { display: inline-flex; align-items: center; gap: 6px; }
 
 .pane__ref { color: var(--lt-primary); }
+
+/* ── Textseiten (Einführung, Info) ────────────────────────────────────────── */
+.doc {
+  max-width: 680px; display: flex; flex-direction: column; gap: 24px;
+  font-size: 13.5px; line-height: 1.6; color: var(--lt-fg-1);
+}
+.doc__title { margin: 6px 0 0; font-size: 22px; font-weight: 600; line-height: 1.15; }
+.doc__lead { margin: 10px 0 0; font-size: 14.5px; color: var(--lt-fg-2); }
+.doc__section { display: flex; flex-direction: column; gap: 8px; }
+.doc__section p { margin: 0; }
+.doc a { color: var(--lt-info); text-decoration: none; }
+.doc a:hover { text-decoration: underline; }
+.doc__steps, .doc__list, .doc__refs { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.doc__refs { font-size: 12.5px; color: var(--lt-fg-2); }
+.doc__cta {
+  align-self: flex-start; margin-top: 4px;
+  display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+  font: inherit; font-size: 12.5px; font-weight: 600; padding: 7px 12px;
+  border-radius: var(--lt-r-sm); border: 1px solid var(--lt-primary-line);
+  background: var(--lt-primary-soft); color: var(--lt-primary);
+}
+.doc__cta:hover { background: var(--lt-primary); color: var(--lt-bg-0); }
 
 /* Lesehilfe */
 .readkey { margin: 0; display: flex; flex-direction: column; gap: 8px; font-size: 12px; }

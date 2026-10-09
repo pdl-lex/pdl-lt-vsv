@@ -9,7 +9,7 @@
  * gesammelt, was der Nutzer einstellt — die Regeln stehen im Schema, nicht im
  * Frontend.
  *
- * Rückfall: Bundle ohne Suchraum, aus einer Datei geöffnet oder Backend nicht
+ * Rückfall: Bundle ohne Suchraum, selbst hochgeladen oder Backend nicht
  * erreichbar → die vorberechneten `neighbors` des Bundles, Filter mit Hinweis
  * deaktiviert.
  *
@@ -52,7 +52,8 @@ export function availabilityOf(loaded: LoadedBundle | null): Availability {
     return {
       kind: "unavailable",
       reason:
-        "Das Bundle wurde aus einer Datei geöffnet; Abfragen gehen nur über das Backend. " +
+        "Das Bundle wurde selbst hochgeladen und nur im Browser geöffnet; Abfragen gehen nur " +
+        "über die fertigen Bundles des Backends. " +
         "Angezeigt werden die vorberechneten Nachbarn mit den Voreinstellungen.",
       meta: parsed.value,
     };

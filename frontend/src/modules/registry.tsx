@@ -12,6 +12,8 @@
  */
 import type { FC } from "react";
 import type { IconName } from "../design/icons";
+import { EinfuehrungMain } from "./einfuehrung";
+import { InfoMain } from "./info";
 import { DatenConfig, DatenMain } from "./daten";
 import { WortraumConfig, WortraumFooter, WortraumMain } from "./wortraum";
 import { MatrizenConfig, MatrizenMain } from "./matrizen";
@@ -32,13 +34,23 @@ export interface ModuleDef {
   title: string;
   /** Kurzbeschreibung unter dem Titel; fehlt sie, bleibt die Zeile weg. */
   description?: string;
-  Config: FC;
+  /** Konfigurator-Spalte; fehlt sie, nimmt der Hauptbereich die volle Breite. */
+  Config?: FC;
   Main: FC;
   /** Optionale Fußzeile über die volle Breite (nur der Wortraum hat eine). */
   Footer?: FC;
 }
 
 export const MODULES: ModuleDef[] = [
+  {
+    id: "einfuehrung",
+    label: "Einführung",
+    group: "Einführung",
+    icon: "home",
+    eyebrow: "Start",
+    title: "Einführung",
+    Main: EinfuehrungMain,
+  },
   {
     id: "daten",
     label: "Datenquelle",
@@ -148,15 +160,28 @@ export const MODULES: ModuleDef[] = [
   },
 ];
 
-/** Reihenfolge der Gruppen in der Rail (nicht alphabetisch: Daten kommt zuerst,
- * weil ohne Bundle kein Werkzeug etwas anzeigen kann). */
-export const MODULE_GROUPS = ["Daten", "Visualisierung"] as const;
+/** Info-Seite: kein Werkzeug, daher in keiner Gruppe; sitzt unten in der Rail. */
+export const INFO_MODULE: ModuleDef = {
+  id: "info",
+  label: "Informationen",
+  group: "",
+  icon: "info",
+  eyebrow: "Über",
+  title: "Informationen",
+  Main: InfoMain,
+};
+
+/** Reihenfolge der Gruppen in der Rail (nicht alphabetisch: nach der Einführung
+ * kommt Daten, weil ohne Bundle kein Werkzeug etwas anzeigen kann). */
+export const MODULE_GROUPS = ["Einführung", "Daten", "Visualisierung"] as const;
 
 export const GROUP_ICON: Record<string, IconName> = {
+  Einführung: "home",
   Daten: "database",
   Visualisierung: "chart",
 };
 
 export function moduleById(id: string): ModuleDef {
+  if (id === INFO_MODULE.id) return INFO_MODULE;
   return MODULES.find((m) => m.id === id) ?? MODULES[0];
 }

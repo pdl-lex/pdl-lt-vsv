@@ -20,6 +20,27 @@ export async function loadFromApi(id: string): Promise<LoadedBundle> {
   return { bundle: validateBundle(raw), source: { kind: "api", id } };
 }
 
+/**
+ * Aus einer Dateiauswahl die Bundle-JSON heraussuchen. Wer die Suchraum-Dateien
+ * (`.vectors.npy`, `.index.parquet`) gleich mit auswählt oder hineinzieht, soll
+ * keinen Fehler bekommen: Sie werden ignoriert, Nachbarabfragen laufen nur über
+ * das Backend.
+ */
+export function pickBundleFile(files: readonly File[]): File {
+  const jsons = files.filter((f) => f.name.toLowerCase().endsWith(".json"));
+  if (jsons.length === 1) return jsons[0];
+  if (jsons.length === 0) {
+    throw new Error(
+      "Keine Bundle-Datei (.json) dabei. Die Suchraum-Dateien (.npy, .parquet) " +
+        "lassen sich nicht allein öffnen.",
+    );
+  }
+  throw new Error(
+    `Mehrere JSON-Dateien ausgewählt (${jsons.map((f) => f.name).join(", ")}). ` +
+      "Bitte nur ein Bundle auf einmal.",
+  );
+}
+
 /** Lädt eine lokale JSON-Datei (File-Input oder Drag-and-Drop) und validiert sie. */
 export async function loadFromFile(file: File): Promise<LoadedBundle> {
   const text = await file.text();

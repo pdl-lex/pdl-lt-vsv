@@ -1,5 +1,5 @@
 /**
- * Modul „Datenquelle": Bundle laden (Backend-Picker / Datei / Drag-and-Drop) und
+ * Modul „Datenquelle": fertiges Bundle wählen oder eigenes hochladen und
  * das Geladene inspizieren, BEVOR man es visualisiert.
  *
  * Der Hauptbereich ist bewusst kein Deko-Panel: er beantwortet die Fragen, die
@@ -49,7 +49,7 @@ export function DatenMain() {
   if (!indexed) {
     return (
       <div className="main__placeholder">
-        {status === "loading" ? "Lade Bundle…" : "Wähle links einen Datensatz."}
+        {status === "loading" ? "Lade Bundle…" : "Wähle links ein fertiges Bundle oder lade ein eigenes hoch."}
       </div>
     );
   }

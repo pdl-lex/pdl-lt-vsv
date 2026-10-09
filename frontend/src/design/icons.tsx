@@ -1,6 +1,6 @@
 /**
  * Dünnstrichiges Inline-SVG-Icon-Set + LexoTerm-Logo (Teilmenge aus dem
- * Design-Handoff, nur was der Vektor-Viz braucht). Eigenes Set, damit keine
+ * Design-Handoff, nur was VSV braucht). Eigenes Set, damit keine
  * Icon-Font/Library nötig ist.
  */
 import type { CSSProperties, JSX } from "react";
@@ -9,7 +9,7 @@ export type IconName =
   | "search" | "chevron" | "chevDown" | "x" | "play" | "pause" | "filter"
   | "sun" | "moon" | "upload" | "file" | "layers" | "dot" | "reset" | "target"
   | "database" | "orbit" | "matrix" | "chart" | "pin" | "info"
-  | "trend" | "compare" | "flow" | "ranking";
+  | "trend" | "compare" | "flow" | "ranking" | "home" | "arrowRight";
 
 const PATHS: Record<IconName, JSX.Element> = {
   search: <><circle cx="7" cy="7" r="4.5" /><path d="M10.5 10.5 14 14" /></>,
@@ -33,6 +33,9 @@ const PATHS: Record<IconName, JSX.Element> = {
   matrix: <><rect x="2.5" y="2.5" width="11" height="11" rx="1" /><path d="M6.2 2.5v11M9.8 2.5v11M2.5 6.2h11M2.5 9.8h11" /><path d="M2.5 2.5h3.7v3.7h-3.7z M6.2 6.2h3.6v3.6H6.2z M9.8 9.8h3.7v3.7H9.8z" fill="currentColor" stroke="none" opacity="0.45" /></>,
   chart: <><path d="M2.5 13.5V2.5" /><path d="M2.5 13.5h11" /><path d="M4.5 10.5 7 7l2.5 2 3-4.5" /></>,
   pin: <><path d="M6 2h4l-.6 3.6 2.1 2.1H4.5l2.1-2.1z" /><path d="M8 7.7V14" /></>,
+  // Einführung: Startseite.
+  home: <><path d="M2.5 7.5 8 2.5l5.5 5" /><path d="M4 6.3v7.2h8V6.3" /><path d="M6.8 13.5V10h2.4v3.5" /></>,
+  arrowRight: <><path d="M3 8h10" /><path d="M9 4l4 4-4 4" /></>,
   info: <><circle cx="8" cy="8" r="6" /><path d="M8 7.2v4" /><path d="M8 4.9v.9" /></>,
   // Drift: eine steigende Kurve über der Zeitachse.
   trend: <><path d="M2 13.5h12" /><path d="M2.5 11 6 7l2.5 2L13 3" /><path d="M10.4 3H13v2.6" /></>,
@@ -62,17 +65,15 @@ export function Icon({
   );
 }
 
+/** LexoTerm-Logo aus `public/lexoterm_logo.svg` (feste Markenfarben, in beiden Modi gleich). */
 export function Logo({ size = 18, style }: { size?: number; style?: CSSProperties }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", ...style }}>
-      <defs>
-        <linearGradient id="lt-logo-g" x1="0" x2="1" y1="0" y2="1">
-          <stop offset="0" stopColor="var(--lt-g-400)" />
-          <stop offset="1" stopColor="var(--lt-g-700)" />
-        </linearGradient>
-      </defs>
-      <path d="M12 1.5 22.5 12 12 22.5 1.5 12z" fill="url(#lt-logo-g)" />
-      <path d="M12 6.5 17.5 12 12 17.5 6.5 12z" fill="var(--lt-bg-0)" opacity="0.18" />
-    </svg>
+    <img
+      src={`${import.meta.env.BASE_URL}lexoterm_logo.svg`}
+      width={size}
+      height={size}
+      alt="LexoTerm"
+      style={{ display: "inline-block", ...style }}
+    />
   );
 }

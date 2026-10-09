@@ -19,16 +19,30 @@ function initialPinned(): boolean {
 interface WorkbenchState {
   /** ID des aktiven Moduls (siehe `modules/registry.tsx`). */
   activeId: string;
+  /** Modul vor dem Öffnen der Info-Seite; dorthin führt das Schließen zurück. */
+  beforeInfoId: string;
   /** Rail angeheftet (248px, inline) statt eingeklappt (56px, Hover-Flyout). */
   railPinned: boolean;
   setActiveId: (id: string) => void;
+  /** Info-Seite öffnen bzw. schließen (zurück zum vorigen Modul). */
+  toggleInfo: () => void;
   setRailPinned: (pinned: boolean) => void;
 }
 
+export const INFO_ID = "info";
+
 export const useWorkbench = create<WorkbenchState>((set) => ({
-  activeId: "wortraum",
+  // Start auf der Einführung: erst sagen, was das Werkzeug kann.
+  activeId: "einfuehrung",
+  beforeInfoId: "einfuehrung",
   railPinned: initialPinned(),
   setActiveId: (id) => set({ activeId: id }),
+  toggleInfo: () =>
+    set((s) =>
+      s.activeId === INFO_ID
+        ? { activeId: s.beforeInfoId }
+        : { activeId: INFO_ID, beforeInfoId: s.activeId },
+    ),
   setRailPinned: (railPinned) => {
     try {
       localStorage.setItem(PIN_KEY, railPinned ? "1" : "0");

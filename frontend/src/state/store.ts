@@ -5,7 +5,7 @@
  */
 import { create } from "zustand";
 import { fetchBundleList, type BundleSummary } from "../data/apiClient";
-import { loadFromApi, loadFromFile, type LoadedBundle } from "../data/loader";
+import { loadFromApi, loadFromFile, pickBundleFile, type LoadedBundle } from "../data/loader";
 import { indexBundle, type IndexedBundle } from "../data/model";
 
 type Status = "idle" | "loading" | "ready" | "error";
@@ -56,7 +56,8 @@ interface VizState {
   // Aktionen
   loadList: () => Promise<void>;
   openApiBundle: (id: string) => Promise<void>;
-  openFile: (file: File) => Promise<void>;
+  /** Eigenes Bundle aus einer Dateiauswahl (die JSON darin, s. `pickBundleFile`). */
+  openFiles: (files: readonly File[]) => Promise<void>;
   setSliceT: (t: number) => void;
   setActiveEntity: (id: string | null) => void;
   toggleEntity: (id: string) => void;
@@ -127,10 +128,10 @@ export const useViz = create<VizState>((set, get) => ({
     }
   },
 
-  openFile: async (file) => {
+  openFiles: async (files) => {
     set({ status: "loading", error: null });
     try {
-      set(applyLoaded(await loadFromFile(file)));
+      set(applyLoaded(await loadFromFile(pickBundleFile(files))));
     } catch (err) {
       set({ status: "error", error: (err as Error).message });
     }
