@@ -18,7 +18,7 @@ Zwei Beispiel-Bundles liegen bei:
 | `entities` | array | Die Zielwörter (das, was sich über die Zeit bewegt) |
 | `time_slices` | array | Zeitscheiben in Reihenfolge (`index`) |
 | `anchors` | array | Kontext-/Landmarkenwörter: feste Punkte im Raum für NN + Orientierung |
-| `vocab_points` | array | Optional. Koordinaten-Tabelle (Label + `coords_3d`) für Nachbarn, die keine `anchors` sind — damit das Frontend sie im 3D-Bild zeichnen kann |
+| `neighbor_coords` | array | Optional. Koordinaten-Tabelle (Label + `coords_3d`) für Nachbarn, die keine `anchors` sind — damit das Frontend sie im 3D-Bild zeichnen kann |
 | `records` | array | Facettenaufgelöste Zellen (Wort × Scheibe × Facettenwert) |
 | `aggregates` | array | Über Facetten aggregierte Zellen (`facets: {}`) |
 | `neighbors` | object | Vorberechnete Nearest-Neighbour-Listen je Wort/Scheibe |
@@ -29,7 +29,7 @@ Zwei Beispiel-Bundles liegen bei:
   die PCA gefittet wurde (im PPMI-Pfad seit 2026-10-05 nur die Aggregate;
   vorher Aggregate + Anker).
 - `explained_variance_ratio_3d_vocab` – optional, **out-of-sample**: dieselben
-  drei Achsen, angewandt auf die `vocab_points`. Die wurden nur hineinprojiziert,
+  drei Achsen, angewandt auf die `neighbor_coords`. Die wurden nur hineinprojiziert,
   nicht mitgefittet, und werden deshalb schlechter abgebildet — im SGNS-Bundle
   **20 % gegen 37 %**. Da genau diese Wolke der Radius-Regler zeigt, wäre der
   In-Sample-Wert dort fast doppelt zu optimistisch. Fehlt das Feld, zeigt das
@@ -124,7 +124,7 @@ Im Demo-Bundle sind es reale Dornseiff-Lemmata der einschlägigen Sachgruppen;
 im PPMI-Pfad stammen sie aus einer kuratierten, parameterunabhängigen
 Maximalliste, von der ein Lauf die im Vokabular vorhandenen übernimmt.
 
-## `vocab_points`
+## `neighbor_coords`
 
 Optionales Feld, nur `{"label": ..., "coords_3d": [x,y,z]}` — kein `cluster`,
 kein `vector`. Per Out-of-Sample-Projektion in denselben Raum gelegt (keine neue
@@ -135,18 +135,18 @@ wird im Bild nur gezeichnet, wenn seine Position bekannt ist; Anker bringen sie
 mit, alle anderen Nachbarn finden sie hier. Das Feld ist *kein* eigener
 Suchraum — ausgewählt wird ausschließlich im vollen Vektorraum (s. `neighbors`).
 Mit `meta.neighbor_space` kommen die Koordinaten aller Kandidaten aus der
-Indextabelle; `vocab_points` deckt dann nur noch die vorberechneten Listen ab
+Indextabelle; `neighbor_coords` deckt dann nur noch die vorberechneten Listen ab
 (Rückfall ohne Backend).
 
 Zwei Bedingungen, beide von der Frontend-Seite her zwingend:
 
 - **Abdeckung.** Jedes Label aus `neighbors`, das kein `anchors`-Eintrag ist,
-  braucht hier einen Punkt. Praktisch heißt das: `vocab_points` aus demselben
+  braucht hier einen Punkt. Praktisch heißt das: `neighbor_coords` aus demselben
   Kandidatenpool ziehen wie die Nachbarn, insbesondere ohne zusätzlichen
   Wortart-Filter. Ein strengerer Filter als bei der Nachbarauswahl hinterlässt
   Löcher im Bild.
 - **Eindeutigkeit.** Ein Label darf nicht gleichzeitig in `anchors` und in
-  `vocab_points` stehen — auch nicht über die *Anzeigeform* eines Ankers
+  `neighbor_coords` stehen — auch nicht über die *Anzeigeform* eines Ankers
   (`anchors[].label` kann von seinem Ausgangslemma abweichen). Das Frontend löst
   Nachbarn über den Text auf; derselbe Text an zwei Positionen ist mehrdeutig.
   Es gibt dann dem Anker den Vorrang, aber der Vertrag sollte den Fall gar nicht
@@ -175,7 +175,7 @@ sinnvoll (Abfragen über `meta.neighbor_space` liefern bis 1000), weil dort erst
 Projektion auseinanderliegen. Wer k erhöht, sollte prüfen, ob der rohe Kosinus
 am letzten Rang noch deutlich über dem Grundpegel liegt (dem mittleren Kosinus
 einer Zelle gegen beliebige Kandidaten) — sonst rankt das Verfahren nur noch
-Rauschen. Die Positionen dazu kommen aus `anchors` bzw. `vocab_points`.
+Rauschen. Die Positionen dazu kommen aus `anchors` bzw. `neighbor_coords`.
 
 Ohne `meta.neighbor_space` **legt der Lieferant das Auswahlverfahren fest**;
 mit Suchraum ist es durch die Auswertungsregel unten festgelegt (roher Kosinus).
@@ -222,8 +222,8 @@ Filtertyp ist eine Formatänderung (neue Formatversion).
 ```json
 "neighbor_space": {
   "format": 1,
-  "vectors": "bundestag_zeitenwende_quarter.vectors.npy",
-  "index": "bundestag_zeitenwende_quarter.index.parquet",
+  "vectors": "bundestag_zeitenwende_quarter.space_vectors.npy",
+  "index": "bundestag_zeitenwende_quarter.space_index.parquet",
   "neighbor_kind": "context",
   "similarity": "cosine",
   "filters": [
@@ -348,7 +348,7 @@ Scores). Das Backend prüft das in einem Konformitätstest für jedes
 ausgelieferte Bundle.
 
 Damit hat jeder mögliche Nachbar eine Position: Die Koordinaten aller
-Kandidaten stehen im Index (`coords_3d`). `vocab_points` deckt nur die
+Kandidaten stehen im Index (`coords_3d`). `neighbor_coords` deckt nur die
 Nachbarn der vorberechneten Listen ab.
 
 ## Konventionen / Fallstricke

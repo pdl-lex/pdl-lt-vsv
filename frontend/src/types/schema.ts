@@ -45,7 +45,7 @@ export const metaSchema = z
     // In-sample: gilt für die Punkte, auf denen die PCA gefittet wurde
     // (Aggregate + Anker).
     explained_variance_ratio_3d: z.number().min(0).max(1).optional(),
-    // Dieselben drei Achsen, aber für die `vocab_points` — die wurden nur
+    // Dieselben drei Achsen, aber für die `neighbor_coords` — die wurden nur
     // hineinprojiziert, nicht mitgefittet, und werden deshalb schlechter
     // abgebildet (SGNS-Bundle: 20 % gegen 37 %). Genau diese Wolke zeigt der
     // Radius-Regler, also darf dort nicht der In-Sample-Wert stehen. Optional:
@@ -132,7 +132,7 @@ export const cellSchema = z
  * zu den Nachbarlisten — jeder Nachbar, der kein Anker ist, findet hier seine
  * Position, damit er im 3D-Bild gezeichnet werden kann. Kein eigener Suchraum:
  * ausgewählt wird im vollen Vektorraum beim Lieferanten (`neighbors`). */
-export const vocabPointSchema = z
+export const neighborCoordSchema = z
   .object({
     label: z.string(),
     coords_3d: coords3dSchema,
@@ -217,7 +217,7 @@ export const bundleSchema = z
     entities: z.array(entitySchema).default([]),
     time_slices: z.array(timeSliceSchema).min(1, "time_slices darf nicht leer sein"),
     anchors: z.array(anchorSchema).default([]),
-    vocab_points: z.array(vocabPointSchema).default([]),
+    neighbor_coords: z.array(neighborCoordSchema).default([]),
     records: z.array(cellSchema).default([]),
     aggregates: z.array(cellSchema).default([]),
     neighbors: neighborsSchema.default({}),
@@ -231,7 +231,7 @@ export type FacetValue = z.infer<typeof facetValueSchema>;
 export type Entity = z.infer<typeof entitySchema>;
 export type TimeSlice = z.infer<typeof timeSliceSchema>;
 export type Anchor = z.infer<typeof anchorSchema>;
-export type VocabPoint = z.infer<typeof vocabPointSchema>;
+export type NeighborCoord = z.infer<typeof neighborCoordSchema>;
 export type Cell = z.infer<typeof cellSchema>;
 export type Neighbor = z.infer<typeof neighborSchema>;
 export type Neighbors = z.infer<typeof neighborsSchema>;

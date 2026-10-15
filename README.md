@@ -36,7 +36,8 @@ Bundle wird einmal geladen und von allen Modulen geteilt — ein Modulwechsel ve
   gleichwertige Quellen hinter einer Schnittstelle: **fertiges Bundle wählen**
   (Backend-Picker) oder **eigenes Bundle hochladen** (Dateiauswahl oder
   Drag-and-Drop einer Schema-JSON). Das eigene Bundle wird nur im Browser
-  geöffnet; mitgewählte `.vectors.npy`/`.index.parquet` werden ignoriert.
+  geöffnet; mitgewählte `.space_vectors.npy`/`.space_index.parquet` werden
+  ignoriert.
 - **Bundle-Übersicht**: Kennzahlen, Projektionsverfahren, Facetten-Schema und
   ein Belegungsbalken je Zielwort (Zeitscheiben mit `freq > 0`). Macht dünne
   Korpusstellen sichtbar, bevor man sie visualisiert.
@@ -55,7 +56,7 @@ Bundle wird einmal geladen und von allen Modulen geteilt — ein Modulwechsel ve
   im Bundle; die ganze Liste steht unter „alle anzeigen“). Ausgewählt
   wird im vollen Vektorraum, der Regler schneidet nur die Anzeigeliste ab.
   Positionen kommen aus `anchors`, aus der Kandidatentabelle des Suchraums bzw.
-  aus `vocab_points`. Im Panel blendet „×“ einen Nachbarn aus (als Stoppwort).
+  aus `neighbor_coords`. Im Panel blendet „×“ einen Nachbarn aus (als Stoppwort).
   Eine Zeile über der Liste sagt, welche Filter gelten.
 - **Auflösungs-Gating**: liefert ein Bundle die optionalen Gütemaße `kontrast`/
   `generik` je Zelle (bislang das SGNS-Bundle), dämpft die Szene Punkte, Labels
@@ -81,8 +82,8 @@ Nachbarschafts-Fluss.
 
 - **Gerechnet wird im Backend**, im vollen Vektorraum und nach rohem Kosinus,
   nur unter den Kandidaten, die alle Filter passieren. Voraussetzung ist ein
-  Bundle mit Suchraum (`meta.neighbor_space` plus `.vectors.npy` und
-  `.index.parquet` neben dem JSON). Die Regeln stehen in `SCHEMA.md`.
+  Bundle mit Suchraum (`meta.neighbor_space` plus `.space_vectors.npy` und
+  `.space_index.parquet` neben dem JSON). Die Regeln stehen in `SCHEMA.md`.
 - **Welche Filter es gibt, bestimmt das Bundle**; die Bedienelemente entstehen
   aus der Deklaration: Auswahl mit Anzahl je Wert (z. B. Wortart), Untergrenze
   (z. B. Mindestbelegung), Ausblenden-Schalter (z. B. Rednernamen). Je Filter
@@ -103,7 +104,7 @@ oder ein anderes Bundle öffnen stellt dessen Anker wieder her.
 
 - **Suchfeld** über den ganzen Wortbestand mit Position im Bild: Anker des
   Bundles, Kandidaten des Suchraums (sobald geladen, nur solche ohne eigene
-  Zeitscheibe) und `vocab_points`. Andere Wörter können nicht Anker werden,
+  Zeitscheibe) und `neighbor_coords`. Andere Wörter können nicht Anker werden,
   denn gerechnet wird nichts.
 - **Liste der Anker** mit Label und Cluster, beides direkt änderbar; Cluster
   für neue Anker vorwählbar. Entfernen per ×, zurück auf die Anker des Bundles.
@@ -317,8 +318,8 @@ Schema gegen die Demo-Bundles, Rechenschicht inkl. Überlappung, Nachbar-Filter)
   ziehen. Nachbar-Filter gelten dann nur mit den Voreinstellungen.
 - **Dauerhaft:** JSON nach `backend/bundles/` legen (nicht im Git, siehe unten) → erscheint im Picker.
   Für Nachbar-Filter die Suchraum-Dateien aus `meta.neighbor_space`
-  (`.vectors.npy`, `.index.parquet`) daneben legen; danach `uv run pytest`,
-  der Konformitätstest prüft das neue Bundle mit.
+  (`.space_vectors.npy`, `.space_index.parquet`) daneben legen; danach
+  `uv run pytest`, der Konformitätstest prüft das neue Bundle mit.
 
 Ungültige Bundles werden mit lesbarer Fehlermeldung abgewiesen (Schema- und
 JSON-Syntaxfehler).
@@ -335,7 +336,7 @@ docker run -p 8000:8000 -v /pfad/zu/bundles:/data/bundles pdl-lt-vsv
 
 - **Bundles liegen nicht im Image und nicht im Git**, sondern auf einem Volume
   unter `/data/bundles` (`BUNDLES_DIR`). Pro Bundle gehören das JSON sowie
-  `.vectors.npy` und `.index.parquet` hinein. `backend/bundles/` ist
+  `.space_vectors.npy` und `.space_index.parquet` hinein. `backend/bundles/` ist
   git-ignoriert und dient nur der lokalen Entwicklung.
 - `FRONTEND_DIST` (Pfad des gebauten Frontends), `NEIGHBORS_K_MAX` und
   `MAX_BODY_BYTES` (Obergrenze für Anfragekörper, Standard 2 MB) sind per Env

@@ -37,14 +37,14 @@ export interface CatalogWord {
 
 /**
  * Alle Wörter mit Position, je Lemma einmal: die Anker des Bundles, die
- * Kandidaten des Suchraums (falls geladen) und `vocab_points`. Kandidaten mit
+ * Kandidaten des Suchraums (falls geladen) und `neighbor_coords`. Kandidaten mit
  * eigener Zeitscheibe (SGNS) fehlen — ein Anker ist ein fester Punkt, ihre
  * Position gilt aber nur in einer Scheibe.
  */
 export function anchorCatalog(
   bundleAnchors: Anchor[],
   candidates: Pick<NeighborCandidates, "lemma" | "coords_3d" | "slice"> | null,
-  vocabPoints: { label: string; coords_3d: number[] }[],
+  neighborCoords: { label: string; coords_3d: number[] }[],
 ): CatalogWord[] {
   const byLemma = new Map<string, CatalogWord>();
   const labels = new Set<string>();
@@ -62,7 +62,7 @@ export function anchorCatalog(
       add({ lemma, label: lemma, coords: candidates.coords_3d[i], source: "candidate" });
     });
   }
-  for (const v of vocabPoints) {
+  for (const v of neighborCoords) {
     add({ lemma: v.label, label: v.label, coords: v.coords_3d as Coords3d, source: "vocab" });
   }
   return [...byLemma.values()];

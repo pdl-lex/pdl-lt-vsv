@@ -22,9 +22,9 @@ export async function loadFromApi(id: string): Promise<LoadedBundle> {
 
 /**
  * Aus einer Dateiauswahl die Bundle-JSON heraussuchen. Wer die Suchraum-Dateien
- * (`.vectors.npy`, `.index.parquet`) gleich mit auswählt oder hineinzieht, soll
- * keinen Fehler bekommen: Sie werden ignoriert, Nachbarabfragen laufen nur über
- * das Backend.
+ * (`.space_vectors.npy`, `.space_index.parquet`) gleich mit auswählt oder
+ * hineinzieht, soll keinen Fehler bekommen: Sie werden ignoriert,
+ * Nachbarabfragen laufen nur über das Backend.
  */
 export function pickBundleFile(files: readonly File[]): File {
   const jsons = files.filter((f) => f.name.toLowerCase().endsWith(".json"));

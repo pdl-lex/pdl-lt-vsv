@@ -78,7 +78,7 @@ export function AnkerMain() {
   const searchable = useNeighborFilters((s) => s.availability.kind === "available");
 
   const catalog = useMemo(
-    () => (indexed ? anchorCatalog(indexed.bundle.anchors, space?.candidates ?? null, indexed.vocabPoints) : []),
+    () => (indexed ? anchorCatalog(indexed.bundle.anchors, space?.candidates ?? null, indexed.neighborCoords) : []),
     [indexed?.bundle, space],
   );
 

@@ -6,7 +6,7 @@
  * Auto-Framing berechnen, Konfidenz-Normierung (freq-Maxima) und Lookups für
  * Nachbarschaften/Anker. Die 3D-Komponenten arbeiten nur noch mit `IndexedBundle`.
  */
-import type { Anchor, Bundle, Cell, Coords3d, Entity, Neighbor, Neighbors, TimeSlice, VocabPoint } from "../types/schema";
+import type { Anchor, Bundle, Cell, Coords3d, Entity, Neighbor, Neighbors, TimeSlice, NeighborCoord } from "../types/schema";
 import type { NeighborCandidates, NeighborQueryResult } from "./apiClient";
 
 /** Ein Aggregat-Sample einer Entity zu einer Zeitscheibe. */
@@ -76,7 +76,7 @@ export interface IndexedBundle {
    * Lieferanten, hier steht nur, wo die ausgewählten Wörter im Bild liegen.
    * Bewusst NICHT Teil der Framing-Bounding-Box: Ausreißer hier dürfen nicht
    * die Skalierung der ganzen Szene verändern. */
-  vocabPoints: VocabPoint[];
+  neighborCoords: NeighborCoord[];
   /** Label → Position, Anker und Vokabel-Punkte in einer Tabelle. Anker haben
    * Vorrang: kollidiert ein Vokabel-Label mit einer Anker-Anzeigeform (etwa
    * Anker `marode` mit Lemma `marod` neben dem eigenständigen Korpus-Lemma
@@ -309,7 +309,7 @@ export function indexBundle(bundle: Bundle): IndexedBundle {
   const pointByLabel = new Map<string, Coords3d>();
   const pointByLowerLabel = new Map<string, Coords3d>();
   for (const a of bundle.anchors) addPoint(pointByLabel, pointByLowerLabel, a.label, a.coords_3d as Coords3d);
-  for (const v of bundle.vocab_points) addPoint(pointByLabel, pointByLowerLabel, v.label, v.coords_3d as Coords3d);
+  for (const v of bundle.neighbor_coords) addPoint(pointByLabel, pointByLowerLabel, v.label, v.coords_3d as Coords3d);
 
   // Framing über alle sichtbaren Punkte (Anker + Aggregate + Records).
   const allCoords: Coords3d[] = [
@@ -334,7 +334,7 @@ export function indexBundle(bundle: Bundle): IndexedBundle {
     primaryValueIndex,
     anchors: bundle.anchors,
     anchorByLabel,
-    vocabPoints: bundle.vocab_points,
+    neighborCoords: bundle.neighbor_coords,
     pointByLabel,
     pointByLowerLabel,
     slicePointByLabel: new Map(),
@@ -441,7 +441,7 @@ function longestList(neighbors: Neighbors): number {
  *
  * `pointByLabel` wird um die Koordinaten aller Kandidaten ergänzt — damit hat
  * jeder mögliche Nachbar eine Position im Bild, nicht nur die aus
- * `vocab_points`. Bestehende Einträge (Anker zuerst) behalten Vorrang, wie in
+ * `neighbor_coords`. Bestehende Einträge (Anker zuerst) behalten Vorrang, wie in
  * `indexBundle()`.
  */
 export function withQueriedNeighbors(

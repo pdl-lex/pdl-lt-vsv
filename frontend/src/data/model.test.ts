@@ -19,7 +19,7 @@ function mini(): Bundle {
       { id: "t2", index: 2 },
     ],
     anchors: [{ label: "Bedarf", cluster: "X", lemma: "Bedarf", coords_3d: [1, 1, 1] }],
-    vocab_points: [
+    neighbor_coords: [
       { label: "bedarf", coords_3d: [2, 2, 2] },
       { label: "sicherheit", coords_3d: [3, 3, 3] },
     ],

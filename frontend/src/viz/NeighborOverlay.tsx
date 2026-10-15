@@ -9,7 +9,7 @@
  *
  * Früher endeten die Linien nur an Ankern (`anchorForLabel`), also an rund 2 %
  * der Nachbar-Labels — der Rest hatte im Bundle keine Koordinate. Seit
- * `vocab_points` die Positionen zu allen Nachbarn mitliefert, greift
+ * `neighbor_coords` die Positionen zu allen Nachbarn mitliefert, greift
  * `pointForLabel` und die Linien gehen zu allen verorteten Treffern.
  */
 import { Line } from "@react-three/drei";

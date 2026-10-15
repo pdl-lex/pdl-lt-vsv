@@ -12,7 +12,7 @@
  *
  * Deshalb jetzt: **ausgewählt wird im vollen Vektorraum** (beim Lieferanten,
  * s. `meta.projection` und SCHEMA.md), **gezeichnet wird im Bild**. Die
- * Koordinaten kommen aus `anchors` bzw. `vocab_points`, die Auswahl und ihre
+ * Koordinaten kommen aus `anchors` bzw. `neighbor_coords`, die Auswahl und ihre
  * Reihenfolge aus `neighbors`. Dass die Treffer im Bild verstreut liegen statt
  * um das Zielwort zu clustern, ist nicht der Fehler, sondern der Befund.
  */

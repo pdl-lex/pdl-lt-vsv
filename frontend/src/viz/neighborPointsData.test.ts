@@ -1,6 +1,6 @@
 /**
  * Absicherung der Verortung der Nachbarlisten. Grundlage ist das Demo-Bundle:
- * es liefert 8 Nachbarn je Zelle und KEIN `vocab_points` — damit lassen sich
+ * es liefert 8 Nachbarn je Zelle und KEIN `neighbor_coords` — damit lassen sich
  * beide Auflösungswege prüfen, der über Anker (steht schon drin) und der über
  * Vokabel-Punkte (wird hier gezielt injiziert).
  */
@@ -16,15 +16,15 @@ function loadRaw(name: string) {
   return JSON.parse(readFileSync(fixturePath(name), "utf-8"));
 }
 
-function withVocabPoints(
+function withNeighborCoords(
   raw: unknown,
-  vocab_points: { label: string; coords_3d: [number, number, number] }[],
+  neighbor_coords: { label: string; coords_3d: [number, number, number] }[],
 ) {
-  return { ...(raw as object), vocab_points };
+  return { ...(raw as object), neighbor_coords };
 }
 
-function demoIndex(vocab_points: { label: string; coords_3d: [number, number, number] }[] = []) {
-  return indexBundle(validateBundle(withVocabPoints(loadRaw("zeitenwende_demo.json"), vocab_points)));
+function demoIndex(neighbor_coords: { label: string; coords_3d: [number, number, number] }[] = []) {
+  return indexBundle(validateBundle(withNeighborCoords(loadRaw("zeitenwende_demo.json"), neighbor_coords)));
 }
 
 describe("neighborPointsAt", () => {
@@ -63,7 +63,7 @@ describe("neighborPointsAt", () => {
     const roh = loadRaw("zeitenwende_demo.json");
     // Zweiten Nachbarn durch ein Wort ersetzen, das im Bundle keinen Punkt hat.
     roh.neighbors.bundeswehr["2010Q1"][1] = { label: "GibtsNicht", score: 0.5 };
-    const idx = indexBundle(validateBundle(withVocabPoints(roh, [])));
+    const idx = indexBundle(validateBundle(withNeighborCoords(roh, [])));
 
     const punkte = neighborPointsAt(idx, "bundeswehr", 0, 3);
     expect(punkte.map((p) => p.label)).toEqual(["Sparzwang", "marode"]);
@@ -71,11 +71,11 @@ describe("neighborPointsAt", () => {
     expect(punkte.map((p) => p.rank)).toEqual([1, 3]);
   });
 
-  it("verortet Nicht-Anker über vocab_points", () => {
+  it("verortet Nicht-Anker über neighbor_coords", () => {
     const roh = loadRaw("zeitenwende_demo.json");
     roh.neighbors.bundeswehr["2010Q1"][0] = { label: "Sondervermögen", score: 0.9 };
     const idx = indexBundle(
-      validateBundle(withVocabPoints(roh, [{ label: "Sondervermögen", coords_3d: [1, 2, 3] }])),
+      validateBundle(withNeighborCoords(roh, [{ label: "Sondervermögen", coords_3d: [1, 2, 3] }])),
     );
 
     const [p] = neighborPointsAt(idx, "bundeswehr", 0, 1);
