@@ -350,6 +350,30 @@ docker run -p 8000:8000 -v /pfad/zu/bundles:/data/bundles pdl-lt-vsv
   `ratelimit`), nicht in die App: nur der Proxy sieht die echte Client-Adresse.
   `POST /bundles/{id}/neighbors` rechnet je Anfrage einige hundert Millisekunden.
 
+## Installation auf einem Offline-Rechner
+
+Für Analyserechner ohne Internet (z. B. an der DNB), ohne Docker. Einmal als
+root ausführen, solange der Rechner noch Netz hat:
+
+```bash
+curl -LsSf https://raw.githubusercontent.com/pdl-lex/pdl-lt-vsv/main/scripts/setup_offline.sh \
+  | sudo bash -s -- <gruppe> [/opt]
+```
+
+Das Skript klont das Repo nach `<prefix>/pdl-lt-vsv`, installiert das Backend
+(Python 3.14, `uv sync --locked`) und baut das Frontend. Node wird dafür nur
+temporär heruntergeladen und danach wieder entfernt. Zum Schluss prüft es
+offline, ob das Backend startet und das Frontend ausliefert. Danach gehört das
+Repo der Gruppe `<gruppe>`, und `/etc/profile.d/pdl-lt-vsv.sh` schaltet uv
+dauerhaft offline und setzt `FRONTEND_DIST`.
+
+Starten: `cd <prefix>/pdl-lt-vsv/backend && uv run uvicorn app.main:app --port 8077`,
+dann im Browser `http://localhost:8077`.
+
+Es folgt denselben Konventionen wie `pdl-lt-vsv-pipeline/scripts/setup_offline.sh`.
+Beide Repos unter demselben Prefix installieren: `pipeline_post.py` kopiert die
+Bundles nach `../pdl-lt-vsv/backend/bundles/`.
+
 ## Lizenz
 
 Quellcode und Dokumentation: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), siehe
