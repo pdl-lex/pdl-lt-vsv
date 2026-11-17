@@ -76,7 +76,7 @@ export function NachbarnConfig() {
         </dl>
         <p className="card__note">
           Quelle sind die Nachbarlisten je Zeitscheibe: mit Suchraum im Bundle vom
-          Backend mit den Filtern der Seite „Filter für nächste Nachbarn“ berechnet, sonst der
+          Backend mit den Filtern der Seite „Nächste Nachbarn“ berechnet, sonst der
           vorberechnete <code>neighbors</code>-Block.
         </p>
       </Section>

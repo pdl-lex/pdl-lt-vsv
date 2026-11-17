@@ -15,6 +15,7 @@ import type { IconName } from "../design/icons";
 import { EinfuehrungMain } from "./einfuehrung";
 import { InfoMain } from "./info";
 import { DatenConfig, DatenMain } from "./daten";
+import { ZielwoerterMain } from "./zielwoerter";
 import { WortraumConfig, WortraumFooter, WortraumMain } from "./wortraum";
 import { MatrizenConfig, MatrizenMain } from "./matrizen";
 import { DriftConfig, DriftMain } from "./drift";
@@ -62,12 +63,22 @@ export const MODULES: ModuleDef[] = [
     Main: DatenMain,
   },
   {
+    id: "zielwoerter",
+    label: "Zielwörter",
+    group: "Daten",
+    icon: "target",
+    eyebrow: "Daten",
+    title: "Zielwörter",
+    description: "Belegung und Häufigkeit je Zielwort, mit Verlauf über die Zeitscheiben.",
+    Main: ZielwoerterMain,
+  },
+  {
     id: "nachbarfilter",
-    label: "Filter für nächste Nachbarn",
+    label: "Nächste Nachbarn",
     group: "Daten",
     icon: "filter",
     eyebrow: "Daten",
-    title: "Filter für nächste Nachbarn",
+    title: "Nächste Nachbarn",
     description:
       "Welche Wörter als nächste Nachbarn infrage kommen — Wortart, Mindestbelegung, Stoppwörter. Gilt in allen Modulen.",
     Config: NachbarfilterConfig,

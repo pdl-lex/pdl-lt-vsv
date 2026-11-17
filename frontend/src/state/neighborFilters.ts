@@ -2,7 +2,7 @@
  * Nachbar-Filter: Filterwerte, Arbeitsliste der Stoppwörter und die Abfrage
  * beim Backend (SCHEMA.md, „meta.neighbor_space“; nextsteps.md §2).
  *
- * Es gibt genau einen Ort für diese Filter (Seite „Filter für nächste Nachbarn“), und sie
+ * Es gibt genau einen Ort für diese Filter (Seite „Nächste Nachbarn“), und sie
  * wirken in allen Modulen: Das Ergebnis einer Abfrage ersetzt die Nachbarlisten
  * im indizierten Bundle (`withQueriedNeighbors`), und alle Ansichten lesen über
  * `neighborsAt()`. Gefiltert wird ausschließlich im Backend, hier wird nur

@@ -402,7 +402,7 @@ function AnchorListCard({ catalog }: { catalog: CatalogWord[] }) {
         Spalten <code>lemma</code>, <code>label</code>, <code>cluster</code>; Label und Cluster
         dürfen fehlen. Die Positionen kommen aus dem Bundle. Fett: nicht im Bundle.
         {countCols.length > 0 &&
-          " Die Zahlen stammen aus dem Suchraum der Nachbarn; grau: unter der Schwelle, die im Modul „Filter für nächste Nachbarn“ gerade aktiv ist."}
+          " Die Zahlen stammen aus dem Suchraum der Nachbarn; grau: unter der Schwelle, die im Modul „Nächste Nachbarn“ gerade aktiv ist."}
       </p>
     </section>
   );

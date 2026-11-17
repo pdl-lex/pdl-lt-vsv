@@ -12,14 +12,28 @@ import { useMode } from "../viz/useMode";
 import { clusterColor, entityColor } from "../viz/theme";
 
 export function TargetWords() {
-  const { indexed, selectedEntityIds, activeEntityId, toggleEntity, setActiveEntity } = useVizPick(
-    "indexed", "selectedEntityIds", "activeEntityId", "toggleEntity", "setActiveEntity",
-  );
+  const { indexed, selectedEntityIds, activeEntityId, toggleEntity, setActiveEntity, setAllEntities } =
+    useVizPick(
+      "indexed", "selectedEntityIds", "activeEntityId", "toggleEntity", "setActiveEntity", "setAllEntities",
+    );
   const mode = useMode();
   if (!indexed) return null;
 
+  const allSelected = indexed.tracks.every((t) => selectedEntityIds.has(t.entity.id));
+  const noneSelected = selectedEntityIds.size === 0;
+
   return (
     <div className="words">
+      {indexed.tracks.length > 1 && (
+        <div className="words__bulk">
+          <button type="button" className="nf-btn words__bulkbtn" onClick={() => setAllEntities(true)} disabled={allSelected}>
+            Alle auswählen
+          </button>
+          <button type="button" className="nf-btn words__bulkbtn" onClick={() => setAllEntities(false)} disabled={noneSelected}>
+            Alle abwählen
+          </button>
+        </div>
+      )}
       {indexed.tracks.map((t, i) => {
         const id = t.entity.id;
         const color = entityColor(i, mode);

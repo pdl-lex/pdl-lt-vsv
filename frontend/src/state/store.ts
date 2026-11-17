@@ -62,6 +62,8 @@ interface VizState {
   setSliceT: (t: number) => void;
   setActiveEntity: (id: string | null) => void;
   toggleEntity: (id: string) => void;
+  /** Alle Zielwörter ein- (`true`) bzw. ausblenden (`false`). */
+  setAllEntities: (selected: boolean) => void;
   setNeighborK: (k: number) => void;
   toggleCluster: (cluster: string) => void;
   setViewMode: (mode: ViewMode) => void;
@@ -157,6 +159,13 @@ export const useViz = create<VizState>((set, get) => ({
         active = s.indexed?.tracks.find((t) => next.has(t.entity.id))?.entity.id ?? null;
       }
       return { selectedEntityIds: next, activeEntityId: active };
+    }),
+  setAllEntities: (selected) =>
+    set((s) => {
+      const ids = s.indexed?.tracks.map((t) => t.entity.id) ?? [];
+      if (!selected) return { selectedEntityIds: new Set<string>(), activeEntityId: null };
+      // Aktives Zielwort behalten, sonst (keins aktiv) das erste nehmen.
+      return { selectedEntityIds: new Set(ids), activeEntityId: s.activeEntityId ?? ids[0] ?? null };
     }),
 
   setViewMode: (mode) => set({ viewMode: mode }),

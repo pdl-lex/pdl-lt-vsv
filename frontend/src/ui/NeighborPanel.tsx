@@ -19,12 +19,12 @@ import { useNeighborFilters } from "../state/neighborFilters";
 // Ohne Suchraum legt der Lieferant das Auswahlverfahren fest (SCHEMA.md,
 // `neighbors`) — der Text verweist deshalb auf meta.projection, statt eines zu
 // behaupten. Mit Suchraum rechnet das Backend nach rohem Kosinus mit den
-// Filtern der Seite „Filter für nächste Nachbarn“ (SCHEMA.md, `meta.neighbor_space`).
+// Filtern der Seite „Nächste Nachbarn“ (SCHEMA.md, `meta.neighbor_space`).
 const NACHBARN_INFO =
   "Die nächsten Wörter zu diesem Wort im vollen Vektorraum (alle Dimensionen, " +
   "nicht nur die 3 sichtbaren), je Zeitscheibe. Angezeigt wird der rohe Kosinus. " +
   "Mit Suchraum im Bundle rechnet das Backend die Liste mit den Filtern der Seite " +
-  "„Filter für nächste Nachbarn“ neu; sonst sind es die vorberechneten Nachbarn, ausgewählt wie " +
+  "„Nächste Nachbarn“ neu; sonst sind es die vorberechneten Nachbarn, ausgewählt wie " +
   "in meta.projection beschrieben. Das Tool sortiert nicht um. " +
   "Die Karte zeigt die ersten 10, die ganze Liste steht unter „alle anzeigen“. " +
   "Wie viele davon als beschriftete Punkte im 3D-Bild liegen, stellt der Regler " +
@@ -114,7 +114,7 @@ export function NeighborPanel() {
                     type="button"
                     className="nn__hide"
                     onClick={() => addStopwords([n.lemma!])}
-                    title={`„${n.lemma}“ ausblenden (als Stoppwort; rückgängig auf der Seite „Filter für nächste Nachbarn“)`}
+                    title={`„${n.lemma}“ ausblenden (als Stoppwort; rückgängig auf der Seite „Nächste Nachbarn“)`}
                     aria-label={`${n.lemma} ausblenden`}
                   >
                     ×

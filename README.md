@@ -21,7 +21,7 @@ Bundle wird einmal geladen und von allen Modulen geteilt — ein Modulwechsel ve
 |---|---|
 | **Einführung** | Startseite: was das Werkzeug zeigt, wie man loslegt, Sprung zu jeder Visualisierung |
 | **Datenquelle** | Bundle laden und prüfen: Projektion, Zeitraum, Facetten, Belegung je Zielwort |
-| **Filter für nächste Nachbarn** | Welche Wörter als Nachbarn infrage kommen (Wortart, Mindestbelegung, Stoppwörter …); gilt in allen Modulen |
+| **Nächste Nachbarn** | Welche Wörter als Nachbarn infrage kommen (Wortart, Mindestbelegung, Stoppwörter …); gilt in allen Modulen |
 | **Anker** | Welche Wörter als beschriftete Landmarken stehen, mit Label und Cluster; ergänzen, entfernen, importieren, exportieren (nur für die Sitzung) |
 | **Wortraum (3D)** | Trajektorien durch den gemeinsamen Vektorraum, Zeit als Achse |
 | **Ähnlichkeitsmatrizen** | T×T-Selbstähnlichkeit je Zielwort (Kiyama) |
@@ -74,7 +74,7 @@ Bundle wird einmal geladen und von allen Modulen geteilt — ein Modulwechsel ve
     Facette → Quellenunterschiede werden sichtbar.
   - **Streuung** – facettenaufgelöste Punktwolke je Wort (Unsicherheit/Konsens).
 
-### Filter für nächste Nachbarn
+### Nächste Nachbarn
 
 Eine Seite, auf der festgelegt wird, welche Wörter als Nachbarn infrage kommen.
 Die Filter wirken in allen Modulen: Nachbarn-Panel, Punkte im Wortraum,
@@ -217,7 +217,7 @@ Bump-Diagramm der k nächsten Nachbarn: x = Zeit, y = Rang, eine Linie je Nachba
 Die Ansicht, die eine gemessene Verschiebung **in Wörter übersetzt**.
 
 - **Zahl der Rangplätze = Regler „Nachbarn“** (derselbe wie im Wortraum,
-  Standard 10, höchstens 100); die Filter der Seite „Filter für nächste Nachbarn“ gelten auch hier.
+  Standard 10, höchstens 100); die Filter der Seite „Nächste Nachbarn“ gelten auch hier.
 - **Farbe steht für die Nachbar-Gruppe**, nicht für das einzelne Wort — bei
   vielen Nachbarn trennt keine Palette alle Serien, und der Befund ist ohnehin,
   welche *Art* Umfeld welche ablöst. Die Wortidentität trägt die

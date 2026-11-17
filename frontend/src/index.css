@@ -281,6 +281,9 @@ button, input, select, textarea { font-family: inherit; }
   background: none; border: none; padding: 0; font: inherit; color: var(--lt-fg-1); cursor: pointer;
 }
 .words__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.words__bulk { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 5px 6px; }
+/* Doppelte Klasse: `.nf-btn` steht weiter unten und würde sonst gewinnen. */
+.nf-btn.words__bulkbtn { font-size: 11px; padding: 2px 7px; }
 
 /* ── Anker-Cluster ────────────────────────────────────────────────────────── */
 .clusters { display: flex; flex-direction: column; gap: 3px; }
@@ -859,3 +862,27 @@ button, input, select, textarea { font-family: inherit; }
 .an__edit:hover { border-color: var(--lt-line-1); }
 .an__edit:focus { outline: none; border-color: var(--lt-primary-line); background: var(--lt-bg-1); }
 .an__tbl tr:hover .an__remove, .an__remove:focus-visible { opacity: 1; }
+
+/* ── Modul „Zielwörter" ───────────────────────────────────────────────────── */
+.zw__tablewrap { max-height: 640px; overflow-y: auto; }
+.zw__tbl thead th { position: sticky; top: 0; background: var(--lt-bg-0); z-index: 1; }
+.zw__sort {
+  font: inherit; color: inherit; background: none; border: none; padding: 0; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 3px;
+}
+.zw__sort:hover, .zw__sort--on { color: var(--lt-fg-1); }
+.zw__arrow { font-size: 8px; min-width: 8px; }
+.zw__row--sel td { background: var(--lt-primary-soft); }
+.tbl__row--click.zw__row--sel:hover td { background: var(--lt-primary-soft); }
+/* Unteres Quartil: dieselbe Warnfarbe wie die übrigen Datenlage-Hinweise. */
+.zw__low { background: var(--lt-warn-soft); color: var(--lt-warn); font-weight: 600; }
+.zw__lowkey {
+  background: var(--lt-warn-soft); color: var(--lt-warn); font-weight: 600;
+  padding: 0 4px; border-radius: var(--lt-r-xs);
+}
+.zw__facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px 14px; margin-bottom: 12px; }
+.zw__factv { font-size: 13px; margin-top: 1px; }
+.zw__striplabel { margin-top: 10px; }
+.zw__strip { display: grid; gap: 2px; height: 14px; max-width: none; }
+.zw__cell { border-radius: 2px; }
+.zw__cell--empty { background: var(--lt-bg-3); }

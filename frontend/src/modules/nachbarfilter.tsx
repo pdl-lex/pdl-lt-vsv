@@ -86,8 +86,8 @@ export function NachbarfilterMain() {
     <div className="pane">
       <div className="pane__head">
         <div>
-          <div className="lt-eyebrow">Nächste Nachbarn</div>
-          <h2 className="pane__title">Filter für nächste Nachbarn</h2>
+          <div className="lt-eyebrow">Daten</div>
+          <h2 className="pane__title">Nächste Nachbarn</h2>
           <p className="pane__desc">
             Welche Kontextwörter als nächste Nachbarn infrage kommen. Gilt für alle Module, die
             Nachbarn zeigen.

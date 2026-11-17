@@ -1,7 +1,7 @@
 /**
  * Kurzanzeige, woher die gezeigten Nachbarn stammen und welche Filter wirken —
  * in jedem Modul, das Nachbarn zeigt (Nachvollziehbarkeit, nextsteps.md §2).
- * Ein Klick führt zur Seite „Filter für nächste Nachbarn“, dem einzigen Ort, an dem sich die
+ * Ein Klick führt zur Seite „Nächste Nachbarn“, dem einzigen Ort, an dem sich die
  * Filter ändern lassen.
  */
 import { useViz } from "../state/store";
@@ -45,7 +45,7 @@ export function NeighborFilterNote({ short = false }: { short?: boolean }) {
       type="button"
       className={`nfnote ${warn ? "nfnote--warn" : ""}`}
       onClick={() => setActiveId("nachbarfilter")}
-      title={`${short ? `${full}\n\n` : ""}Filter ändern: Seite „Filter für nächste Nachbarn“`}
+      title={`${short ? `${full}\n\n` : ""}Filter ändern: Seite „Nächste Nachbarn“`}
     >
       <Icon name="filter" size={11} />
       <span>{text}</span>

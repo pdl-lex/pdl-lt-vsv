@@ -41,7 +41,7 @@ export function EinfuehrungMain() {
               )}
             </li>
             <li>
-              <strong>Bei Bedarf einstellen.</strong> Unter „Filter für nächste Nachbarn"
+              <strong>Bei Bedarf einstellen.</strong> Unter „Nächste Nachbarn"
               festlegen, welche Wörter als Nachbarn infrage kommen, unter „Anker", welche
               Wörter im Wortraum als Orientierungspunkte stehen.
             </li>
