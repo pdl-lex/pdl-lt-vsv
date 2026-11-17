@@ -10,9 +10,10 @@ const PIN_KEY = "vsv.railPinned";
 
 function initialPinned(): boolean {
   try {
-    return localStorage.getItem(PIN_KEY) === "1";
+    // Standard: angeheftet. Nur ein explizites Ent-Pinnen ("0") bleibt erhalten.
+    return localStorage.getItem(PIN_KEY) !== "0";
   } catch {
-    return false; // z.B. blockierter Storage — dann eben eingeklappt starten
+    return true; // z.B. blockierter Storage — dann eben angeheftet starten
   }
 }
 
