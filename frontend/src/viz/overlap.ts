@@ -21,7 +21,7 @@
  * „nicht belegt", die Zelle bleibt leer statt 0.
  */
 import { entityFreqAt, neighborsAt, type IndexedBundle } from "../data/model";
-import type { SimilarityMatrix } from "./similarity";
+import { cosine, entityVectors, similaritySourceOf, type SimilarityMatrix, type SimilaritySource } from "./similarity";
 
 /** Startwert für k. Gonen et al. nehmen 1000 bei großem Vokabular; 100 ist
  * bei 150er-Bundle-Listen noch voll gedeckt und reagiert schneller auf Wandel. */
@@ -332,6 +332,29 @@ function combinations(n: number, r: number): number[][] {
 }
 
 /**
+ * Alle Aufteilungen von {0…n−1} in eine Gruppe der Größe r und den Rest, falls
+ * es höchstens `maxSplits` sind; sonst `maxSplits` Zufallsaufteilungen mit
+ * festem Seed (aus n und r). Überlappung und Kosinus benutzen dieselbe
+ * Funktion und damit bei gleicher Belegung dieselben Aufteilungen.
+ */
+function forEachSplit(n: number, r: number, maxSplits: number, visit: (groupA: Set<number>) => void): void {
+  if (choose(n, r, maxSplits) <= maxSplits) {
+    for (const combo of combinations(n, r)) visit(new Set(combo));
+    return;
+  }
+  const rand = seededRandom(n * 7919 + r);
+  const order = Array.from({ length: n }, (_, i) => i);
+  for (let s = 0; s < maxSplits; s++) {
+    // Teilweises Fisher-Yates: die ersten r Positionen sind eine Zufallsauswahl
+    for (let i = 0; i < r; i++) {
+      const j = i + Math.floor(rand() * (n - i));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    visit(new Set(order.slice(0, r)));
+  }
+}
+
+/**
  * Grundrauschen für A ↔ B als **Permutations-Baseline**: die belegten Scheiben
  * beider Zeiträume werden ohne Rücksicht auf ihre Zugehörigkeit auf zwei
  * Gruppen verteilt, so groß wie A und B, beide gepoolt und verglichen —
@@ -451,26 +474,118 @@ export function splitNull(
       if (v <= observed + 1e-9) atMost++;
     }
   };
-  if (choose(n, r, maxSplits) <= maxSplits) {
-    for (const combo of combinations(n, r)) add(value(new Set(combo)));
-  } else {
-    const rand = seededRandom(n * 7919 + r);
-    const order = all.map((_, i) => i);
-    for (let s = 0; s < maxSplits; s++) {
-      // Teilweises Fisher-Yates: die ersten r Positionen sind eine Zufallsauswahl
-      for (let i = 0; i < r; i++) {
-        const j = i + Math.floor(rand() * (n - i));
-        [order[i], order[j]] = [order[j], order[i]];
-      }
-      add(value(new Set(order.slice(0, r))));
-    }
-  }
+  forEachSplit(n, r, maxSplits, (groupA) => add(value(groupA)));
   return {
     mean: count > 0 ? sum / count : NaN,
     p: count > 0 && Number.isFinite(observed) ? (atMost + 1) / (count + 1) : NaN,
     splits: count,
   };
 }
+
+// ── Kosinus zwischen Zeiträumen ────────────────────────────────────────────
+
+/** Vektor auf Länge 1; `null` bei Länge 0. */
+function unit(v: readonly number[]): Float64Array | null {
+  let n = 0;
+  for (const x of v) n += x * x;
+  if (n === 0) return null;
+  const s = 1 / Math.sqrt(n);
+  return Float64Array.from(v, (x) => x * s);
+}
+
+/** Summe ausgewählter Einheitsvektoren (für den Kosinus genügt die Summe statt des Mittels). */
+function sumOf(vectors: readonly Float64Array[], members: Iterable<number>): number[] {
+  const dim = vectors[0].length;
+  const out = new Array<number>(dim).fill(0);
+  for (const m of members) {
+    const v = vectors[m];
+    for (let d = 0; d < dim; d++) out[d] += v[d];
+  }
+  return out;
+}
+
+export interface CosineChange {
+  /** `1 − cos(Mittelvektor A, Mittelvektor B)`; `NaN`, wenn ein Zeitraum leer ist. */
+  distance: number;
+  /** Mittlerer Abstand bei zufälliger Aufteilung der Scheiben (Permutations-Baseline). */
+  baseline: number;
+  /** `distance − baseline`: positiv = A und B liegen weiter auseinander als beliebige Gruppen. */
+  gap: number;
+  /** Anteil der Aufteilungen mit mindestens so großem Abstand, `(b + 1) / (m + 1)`. */
+  p: number;
+  /** Belegte Scheiben mit Vektor je Zeitraum. */
+  usedA: number;
+  usedB: number;
+  source: SimilaritySource;
+}
+
+/**
+ * Klassischer Wandel im Raum (Hamilton et al. 2016b) für zwei Zeiträume:
+ * Kosinus-Abstand der Mittelvektoren von A und B. Jede belegte Scheibe geht
+ * mit Länge 1 ein und hat gleiches Gewicht, wie beim Zusammenlegen der
+ * Nachbarlisten; sonst bestimmte eine vielbelegte Scheibe (langer Vektor) den
+ * Mittelwert. Unbelegte Scheiben (`freq == 0`) fallen weg.
+ *
+ * Baseline und p wie bei der Überlappung (`splitNull`), mit denselben
+ * Aufteilungen, aber mit umgekehrter Richtung: beim Kosinus-Abstand heißt
+ * *größer* Wandel. Die Baseline ist hier wichtiger als bei der Überlappung,
+ * weil der Kosinus stark von der Textmenge abhängt (Methodology 1.18): dünn
+ * belegte Scheiben haben verrauschte Vektoren und liegen weit auseinander,
+ * auch ohne Wandel.
+ */
+export function cosineChange(
+  idx: IndexedBundle,
+  entityId: string,
+  periodA: Period,
+  periodB: Period,
+  maxSplits: number = BASELINE_SPLITS,
+  source: SimilaritySource = similaritySourceOf(idx),
+): CosineChange {
+  const all = entityVectors(idx, entityId, source) ?? [];
+  const take = (p: Period) =>
+    periodIndices(idx, p)
+      .map((i) => (all[i] ? unit(all[i]!) : null))
+      .filter((v): v is Float64Array => v !== null);
+  const va = take(periodA);
+  const vb = take(periodB);
+  const empty = { distance: NaN, baseline: NaN, gap: NaN, p: NaN, usedA: va.length, usedB: vb.length, source };
+  if (va.length === 0 || vb.length === 0) return empty;
+
+  const vectors = [...va, ...vb];
+  const n = vectors.length;
+  const r = va.length;
+  const dist = (groupA: Set<number>) => {
+    const a: number[] = [];
+    const b: number[] = [];
+    for (let i = 0; i < n; i++) (groupA.has(i) ? a : b).push(i);
+    return 1 - cosine(sumOf(vectors, a), sumOf(vectors, b));
+  };
+  const observed = dist(new Set(Array.from({ length: r }, (_, i) => i)));
+
+  let sum = 0;
+  let count = 0;
+  let atLeast = 0;
+  forEachSplit(n, r, maxSplits, (groupA) => {
+    const v = dist(groupA);
+    if (!Number.isFinite(v)) return;
+    sum += v;
+    count++;
+    if (v >= observed - 1e-9) atLeast++;
+  });
+  const baseline = count > 0 ? sum / count : NaN;
+  return {
+    distance: observed,
+    baseline,
+    gap: observed - baseline,
+    p: count > 0 && Number.isFinite(observed) ? (atLeast + 1) / (count + 1) : NaN,
+    usedA: va.length,
+    usedB: vb.length,
+    source,
+  };
+}
+
+/** Wonach das Wandel-Ranking sortiert. */
+export type ChangeSort = "ueberlappung" | "kosinus";
 
 /** Wo ein Zielwort belegt ist: in beiden Zeiträumen, nur in einem oder in keinem. */
 export type ChangeCoverage = "beide" | "nur A" | "nur B" | "keine";
@@ -490,6 +605,11 @@ export interface ChangeRow {
   freqA: number;
   freqB: number;
   coverage: ChangeCoverage;
+  /** Kosinus-Abstand der Mittelvektoren mit eigener Baseline (`cosineChange`). */
+  cos: CosineChange;
+  /** Rang nach Überlappungs- bzw. Kosinus-Abstand (1 = stärkster Wandel); `null` ohne Wert. */
+  rankOverlap: number | null;
+  rankCos: number | null;
   withinA: number;
   withinB: number;
   a: PooledList;
@@ -516,6 +636,11 @@ function periodFreq(idx: IndexedBundle, entityId: string, period: Period): numbe
  * A ↔ B und rechnet diese Belegungsabhängigkeit heraus. Gleichstand: kleinere
  * Überlappung zuerst.
  *
+ * Daneben der klassische Kosinus-Abstand der Mittelvektoren (`cosineChange`),
+ * ebenfalls gegen eine Permutations-Baseline. `sortBy` wählt, nach welchem
+ * Abstand sortiert wird; beide Ränge stehen in jeder Zeile (`rankOverlap`,
+ * `rankCos`), damit sich die Maße gegenseitig prüfen lassen.
+ *
  * Wörter, die nur in einem Zeitraum belegt sind (`coverage` „nur A"/„nur B"),
  * haben keine Überlappung; sie folgen nach Belegen absteigend, zuerst „nur B"
  * (neu aufgekommen), dann „nur A", dann „keine".
@@ -526,8 +651,10 @@ export function buildChangeRanking(
   periodA: Period,
   periodB: Period,
   k: number,
+  sortBy: ChangeSort = "ueberlappung",
 ): ChangeRow[] {
   const kk = effectiveK(idx, k);
+  const source = similaritySourceOf(idx);
   const labelOf = new Map(idx.tracks.map((t) => [t.entity.id, t.entity.label ?? t.entity.id]));
   const rows = entityIds.map((entityId): ChangeRow => {
     const listsA = periodLists(idx, entityId, periodA, kk);
@@ -549,6 +676,9 @@ export function buildChangeRanking(
       freqA: periodFreq(idx, entityId, periodA),
       freqB: periodFreq(idx, entityId, periodB),
       coverage,
+      cos: cosineChange(idx, entityId, periodA, periodB, BASELINE_SPLITS, source),
+      rankOverlap: null,
+      rankCos: null,
       withinA: withinOverlap(idx, entityId, periodA, kk),
       withinB: withinOverlap(idx, entityId, periodB, kk),
       a,
@@ -556,12 +686,24 @@ export function buildChangeRanking(
       diff,
     };
   });
+  const byOverlap = (x: ChangeRow, y: ChangeRow) => y.gap - x.gap || x.between - y.between;
+  const byCos = (x: ChangeRow, y: ChangeRow) => y.cos.gap - x.cos.gap || y.cos.distance - x.cos.distance;
+  rows
+    .filter((r) => Number.isFinite(r.gap))
+    .sort(byOverlap)
+    .forEach((r, i) => (r.rankOverlap = i + 1));
+  rows
+    .filter((r) => Number.isFinite(r.cos.gap))
+    .sort(byCos)
+    .forEach((r, i) => (r.rankCos = i + 1));
+
+  const key = (r: ChangeRow) => (sortBy === "kosinus" ? r.rankCos : r.rankOverlap);
   const groupOrder: Record<ChangeCoverage, number> = { beide: 0, "nur B": 1, "nur A": 2, keine: 3 };
   return rows.sort((x, y) => {
-    const fx = Number.isFinite(x.gap);
-    const fy = Number.isFinite(y.gap);
-    if (fx !== fy) return fx ? -1 : 1;
-    if (fx) return y.gap - x.gap || x.between - y.between;
+    const kx = key(x);
+    const ky = key(y);
+    if ((kx === null) !== (ky === null)) return kx === null ? 1 : -1;
+    if (kx !== null && ky !== null) return kx - ky;
     return groupOrder[x.coverage] - groupOrder[y.coverage] || y.freqA + y.freqB - (x.freqA + x.freqB);
   });
 }
@@ -574,23 +716,28 @@ function csvCell(v: string | number): string {
 
 /**
  * Das Ranking als CSV, eine Zeile je Zielwort in der Reihenfolge der Tabelle.
- * `rank` nur für Wörter mit Überlappung. Zeiträume und k stehen in jeder
+ * `rank` folgt der gewählten Sortierung, `rank_overlap` und `rank_cos` stehen
+ * immer beide da; leer, wo das Maß keinen Wert hat. Zeiträume und k stehen in jeder
  * Zeile, damit die Datei ohne die Ansicht lesbar bleibt.
  */
 export function changeRankingCsv(
   rows: readonly ChangeRow[],
-  ctx: { periodA: string; periodB: string; k: number },
+  ctx: { periodA: string; periodB: string; k: number; sortBy?: ChangeSort },
 ): string {
   const head = [
-    "rank", "entity_id", "label", "coverage", "overlap", "baseline", "gap", "p",
+    "rank", "rank_overlap", "rank_cos", "entity_id", "label", "coverage", "overlap", "baseline", "gap", "p",
+    "cos_distance", "cos_baseline", "cos_gap", "cos_p", "cos_source",
     "within_a", "within_b", "slices_a_used", "slices_a_total", "slices_b_used", "slices_b_total",
     "freq_a", "freq_b", "period_a", "period_b", "k",
   ];
   let rank = 0;
   const lines = rows.map((r) =>
     [
-      Number.isFinite(r.between) ? String(++rank) : "",
+      (ctx.sortBy === "kosinus" ? r.rankCos : r.rankOverlap) !== null ? String(++rank) : "",
+      r.rankOverlap === null ? "" : String(r.rankOverlap),
+      r.rankCos === null ? "" : String(r.rankCos),
       r.entityId, r.label, r.coverage, r.between, r.baseline, r.gap, r.p,
+      r.cos.distance, r.cos.baseline, r.cos.gap, r.cos.p, r.cos.source,
       r.withinA, r.withinB, r.a.used, r.a.total, r.b.used, r.b.total,
       r.freqA, r.freqB, ctx.periodA, ctx.periodB, ctx.k,
     ].map(csvCell).join(","),

@@ -21,7 +21,14 @@ import { useMetricOptions } from "../state/metricOptions";
 import { useChangeOptions } from "../state/changeOptions";
 import { useMode } from "../viz/useMode";
 import { entityColor } from "../viz/theme";
-import { buildChangeRanking, changeRankingCsv, defaultPeriods, effectiveK, type Period } from "../viz/overlap";
+import {
+  buildChangeRanking,
+  changeRankingCsv,
+  defaultPeriods,
+  effectiveK,
+  type ChangeSort,
+  type Period,
+} from "../viz/overlap";
 import { downloadText } from "../ui/download";
 import type { IndexedBundle } from "../data/model";
 import { Section } from "../ui/Section";
@@ -95,7 +102,7 @@ function PeriodPicker({
 
 export function WandelConfig() {
   const indexed = useViz((s) => s.indexed);
-  const { periods, setPeriods } = useChangeOptions();
+  const { periods, setPeriods, sortBy, setSortBy } = useChangeOptions();
   const active = usePeriods(indexed);
   if (!indexed || !active) return <p className="prose">Erst im Modul „Datenquelle" ein Bundle laden.</p>;
 
@@ -121,6 +128,29 @@ export function WandelConfig() {
         </div>
       </Section>
 
+      <Section title="Sortieren nach" icon="layers">
+        <div className="mode">
+          <div className="mode__seg">
+            {SORTS.map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                className={`mode__btn ${sortBy === id ? "mode__btn--active" : ""}`}
+                onClick={() => setSortBy(id)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="mode__hint">
+            {sortBy === "kosinus"
+              ? "Abstand zur Baseline beim Kosinus-Abstand der Mittelvektoren von A und B (Lage im Raum)."
+              : "Abstand zur Baseline bei der Überlappung der Nachbarlisten (Umfeld)."}{" "}
+            Beide Maße stehen in der Tabelle; die Spalte „Rang anders" zeigt den Rang nach dem anderen.
+          </p>
+        </div>
+      </Section>
+
       <Section title="Nachbarn (k)" icon="layers">
         <div className="mode">
           <OverlapKControl />
@@ -141,6 +171,12 @@ export function WandelConfig() {
           <dd>Anteil der zufälligen Aufteilungen, deren Überlappung höchstens so groß ist wie A ↔ B, als (b + 1) / (m + 1). Klein = A ↔ B liegt tiefer als fast jede zufällige Aufteilung; fett unter 0,05. Mit wenigen Scheiben gibt es nur wenige Aufteilungen, dann kann p nicht klein werden (bei 3 + 3 Scheiben höchstens 1/21). Kein Test über alle Wörter hinweg: bei vielen Zielwörtern sind einige kleine p-Werte zufällig.</dd>
           <dt>Nur in einem Zeitraum belegt</dt>
           <dd>Wörter ohne Beleg in A oder in B haben keine Überlappung. Sie stehen getrennt, nach Belegen sortiert: neu aufgekommene (nur B) zuerst.</dd>
+          <dt>1 − cos</dt>
+          <dd>Kosinus-Abstand der Mittelvektoren von A und B, das klassische Maß für Wandel im Raum (Hamilton et al. 2016). Jede belegte Scheibe geht mit Länge 1 und gleichem Gewicht ein. Groß = verschobene Lage.</dd>
+          <dt>Kosinus: Zufall, Abstand, p</dt>
+          <dd>Wie bei der Überlappung, mit denselben zufälligen Aufteilungen, aber umgekehrter Richtung: Abstand = 1 − cos minus Zufall; p = Anteil der Aufteilungen mit mindestens so großem Abstand. Hier besonders wichtig: der Kosinus hängt stark von der Textmenge ab, dünn belegte Scheiben liegen auch ohne Wandel weit auseinander.</dd>
+          <dt>Rang anders</dt>
+          <dd>Rang nach dem jeweils anderen Maß. Stehen beide weit oben, ist der Befund belastbarer. Schlägt nur eins aus: Lage im Raum und Umfeld können sich getrennt ändern (Hamilton et al. 2016a).</dd>
           <dt>Binnen A / B</dt>
           <dd>Wie stabil das Umfeld innerhalb eines Zeitraums ist: seine Scheiben abwechselnd in zwei Hälften geteilt und verglichen. Beschreibend; geht nicht in den Abstand ein, weil die Hälften nur halb so viele Scheiben poolen.</dd>
         </dl>
@@ -154,7 +190,14 @@ export function WandelConfig() {
   );
 }
 
+const SORTS: [ChangeSort, string][] = [
+  ["ueberlappung", "Überlappung"],
+  ["kosinus", "Kosinus"],
+];
+
 const pct = (v: number) => (Number.isFinite(v) ? `${Math.round(v * 100)} %` : "—");
+const dec = (v: number, digits = 3) => (Number.isFinite(v) ? v.toFixed(digits).replace(".", ",") : "—");
+const signed = (v: number) => (Number.isFinite(v) ? `${v > 0 ? "+" : ""}${dec(v)}` : "—");
 
 /** Balken für A ↔ B mit Strich auf Höhe des Grundrauschens. */
 function OverlapBar({ value, noise }: { value: number; noise: number }) {
@@ -172,15 +215,27 @@ function OverlapBar({ value, noise }: { value: number; noise: number }) {
 export function WandelMain() {
   const { indexed, status, selectedEntityIds } = useVizPick("indexed", "status", "selectedEntityIds");
   const overlapK = useMetricOptions((s) => s.overlapK);
-  const { openEntityId, setOpenEntityId } = useChangeOptions();
+  const { openEntityId, setOpenEntityId, sortBy, setSortBy } = useChangeOptions();
+  /** Spaltenkopf, der die Sortierung umschaltet (gleiche Optik wie auf der Seite „Zielwörter"). */
+  const sortButton = (key: ChangeSort, label: string) => (
+    <button
+      type="button"
+      className={`zw__sort ${sortBy === key ? "zw__sort--on" : ""}`}
+      onClick={() => setSortBy(key)}
+      title={`Nach dem Abstand zur Zufallserwartung bei ${key === "kosinus" ? "Kosinus" : "Überlappung"} sortieren`}
+    >
+      {label}
+      <span className="zw__arrow">{sortBy === key ? "▼" : ""}</span>
+    </button>
+  );
   const mode = useMode();
   const periods = usePeriods(indexed);
 
   const rows = useMemo(() => {
     if (!indexed || !periods) return [];
     const ids = indexed.tracks.filter((t) => selectedEntityIds.has(t.entity.id)).map((t) => t.entity.id);
-    return buildChangeRanking(indexed, ids, periods.a, periods.b, overlapK);
-  }, [indexed, periods?.a.from, periods?.a.to, periods?.b.from, periods?.b.to, selectedEntityIds, overlapK]);
+    return buildChangeRanking(indexed, ids, periods.a, periods.b, overlapK, sortBy);
+  }, [indexed, periods?.a.from, periods?.a.to, periods?.b.from, periods?.b.to, selectedEntityIds, overlapK, sortBy]);
 
   if (!indexed || !periods) {
     return (
@@ -204,8 +259,8 @@ export function WandelMain() {
   const download = () => {
     const name = (indexed.bundle.meta.name ?? "bundle").replace(/[^\p{L}\p{N}_-]+/gu, "_");
     downloadText(
-      changeRankingCsv(rows, { periodA: la, periodB: lb, k }),
-      `wandel_${name}_k${k}.csv`,
+      changeRankingCsv(rows, { periodA: la, periodB: lb, k, sortBy }),
+      `wandel_${name}_k${k}_${sortBy}.csv`,
       "text/csv;charset=utf-8",
     );
   };
@@ -217,13 +272,15 @@ export function WandelMain() {
     <div className="pane">
       <div className="pane__head">
         <div>
-          <div className="lt-eyebrow">Nachbarschafts-Überlappung</div>
+          <div className="lt-eyebrow">Überlappung und Kosinus</div>
           <h2 className="pane__title">Wandel-Ranking</h2>
           <p className="pane__desc">
-            Welche Zielwörter haben zwischen <strong>A</strong> ({la}) und{" "}
-            <strong>B</strong> ({lb}) ihr Umfeld am stärksten gewechselt?{" "}
-            <code>|NN_k(A) ∩ NN_k(B)| / k</code> mit k = {k}, sortiert nach dem
-            Abstand zur Zufalls-Überlappung (größter Abstand zuerst).
+            Welche Zielwörter haben sich zwischen <strong>A</strong> ({la}) und{" "}
+            <strong>B</strong> ({lb}) am stärksten verändert? Umfeld:{" "}
+            <code>|NN_k(A) ∩ NN_k(B)| / k</code> mit k = {k}; Lage im Raum:{" "}
+            <code>1 − cos(v̄_A, v̄_B)</code>. Sortiert nach dem Abstand zur
+            Zufallserwartung bei {sortBy === "kosinus" ? "Kosinus" : "Überlappung"}{" "}
+            (größter Abstand zuerst).
           </p>
         </div>
         <NeighborFilterNote short />
@@ -233,25 +290,49 @@ export function WandelMain() {
       </div>
 
       <section className="card">
+        {ranked.some((r) => r.cos.source === "coords_3d") && (
+          <p className="card__note">
+            Das Bundle hat keine vollen Vektoren; der Kosinus ist aus den 3D-Koordinaten
+            gerechnet und deshalb nur grob.
+          </p>
+        )}
+        <div style={{ overflowX: "auto" }}>
         <table className="tbl tbl--rows">
           <thead>
+            <tr>
+              <th colSpan={2} />
+              <th colSpan={4}>{sortButton("ueberlappung", "Überlappung (Umfeld)")}</th>
+              <th colSpan={4}>{sortButton("kosinus", "Kosinus (Lage im Raum)")}</th>
+              <th colSpan={4} />
+            </tr>
             <tr>
               <th className="tbl__num">#</th>
               <th>Wort</th>
               <th>A ↔ B</th>
               <th className="tbl__num" title="Erwartete Überlappung bei zufälliger Aufteilung der Scheiben von A und B">Zufall</th>
-              <th className="tbl__num" title="Zufall minus A ↔ B, in Prozentpunkten; Sortierschlüssel">Abstand</th>
+              <th className="tbl__num" title="Zufall minus A ↔ B, in Prozentpunkten; Klick sortiert danach" aria-sort={sortBy === "ueberlappung" ? "descending" : "none"}>
+                {sortButton("ueberlappung", "Abstand")}
+              </th>
               <th className="tbl__num" title="Anteil zufälliger Aufteilungen mit höchstens so viel Überlappung wie A ↔ B">p</th>
+              <th className="tbl__num" title="1 − cos der Mittelvektoren von A und B">1 − cos</th>
+              <th className="tbl__num" title="Erwarteter Kosinus-Abstand bei zufälliger Aufteilung der Scheiben">Zufall</th>
+              <th className="tbl__num" title="1 − cos minus Zufall; Klick sortiert danach" aria-sort={sortBy === "kosinus" ? "descending" : "none"}>
+                {sortButton("kosinus", "Abstand")}
+              </th>
+              <th className="tbl__num" title="Anteil zufälliger Aufteilungen mit mindestens so großem Kosinus-Abstand">p</th>
+              <th className="tbl__num" title="Rang nach dem anderen Maß">Rang anders</th>
               <th className="tbl__num" title="Stabilität innerhalb des Zeitraums (Hälften gegeneinander), beschreibend">Binnen A</th>
               <th className="tbl__num" title="Stabilität innerhalb des Zeitraums (Hälften gegeneinander), beschreibend">Binnen B</th>
               <th className="tbl__num" title="Belegte Zeitscheiben je Zeitraum">Belegung A · B</th>
             </tr>
           </thead>
           <tbody>
-            {ranked.map((r, rank) => {
+            {ranked.map((r) => {
               const noise = r.baseline;
               const gap = r.gap;
               const isOpen = open?.entityId === r.entityId;
+              const rank = sortBy === "kosinus" ? r.rankCos : r.rankOverlap;
+              const other = sortBy === "kosinus" ? r.rankOverlap : r.rankCos;
               return (
                 <tr
                   key={r.entityId}
@@ -259,7 +340,7 @@ export function WandelMain() {
                   onClick={() => setOpenEntityId(isOpen ? null : r.entityId)}
                   title="Nachbarn anzeigen"
                 >
-                  <td className="tbl__num tbl__muted lt-mono">{rank + 1}</td>
+                  <td className="tbl__num tbl__muted lt-mono">{rank ?? "—"}</td>
                   <td>
                     <span className="tbl__word">
                       {swatch(r.entityId)}
@@ -274,8 +355,17 @@ export function WandelMain() {
                     {Number.isFinite(gap) ? `${gap > 0 ? "+" : ""}${Math.round(gap * 100)}` : "—"}
                   </td>
                   <td className={`tbl__num lt-mono ${r.p < 0.05 ? "tbl__strong" : "tbl__muted"}`}>
-                    {Number.isFinite(r.p) ? r.p.toFixed(2).replace(".", ",") : "—"}
+                    {dec(r.p, 2)}
                   </td>
+                  <td className="tbl__num lt-mono">{dec(r.cos.distance)}</td>
+                  <td className="tbl__num lt-mono tbl__muted">{dec(r.cos.baseline)}</td>
+                  <td className={`tbl__num lt-mono ${r.cos.p < 0.05 ? "tbl__strong" : "tbl__muted"}`}>
+                    {signed(r.cos.gap)}
+                  </td>
+                  <td className={`tbl__num lt-mono ${r.cos.p < 0.05 ? "tbl__strong" : "tbl__muted"}`}>
+                    {dec(r.cos.p, 2)}
+                  </td>
+                  <td className="tbl__num lt-mono tbl__muted">{other ?? "—"}</td>
                   <td className="tbl__num lt-mono tbl__muted">{pct(r.withinA)}</td>
                   <td className="tbl__num lt-mono tbl__muted">{pct(r.withinB)}</td>
                   <td className={`tbl__num lt-mono ${r.a.used < r.a.total || r.b.used < r.b.total ? "cov__num--partial" : "tbl__muted"}`}>
@@ -286,13 +376,15 @@ export function WandelMain() {
             })}
           </tbody>
         </table>
+        </div>
         <p className="card__note">
           Der Strich im Balken markiert die Zufalls-Überlappung: die Scheiben von A
           und B zufällig auf zwei gleich große Gruppen verteilt. Liegt der Balken
           deutlich links davon, unterscheiden sich die Zeiträume stärker als
-          beliebige Gruppen derselben Scheiben. Sortiert ist nach diesem Abstand,
-          nicht nach der Überlappung selbst. Klick auf eine Zeile zeigt, welche
-          Nachbarn weggefallen und hinzugekommen sind.
+          beliebige Gruppen derselben Scheiben. Beim Kosinus gilt dasselbe mit
+          umgekehrter Richtung. Sortiert ist nach dem Abstand zur Zufallserwartung,
+          nicht nach dem Rohwert. Klick auf eine Zeile zeigt, welche Nachbarn
+          weggefallen und hinzugekommen sind.
         </p>
       </section>
 

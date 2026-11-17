@@ -11,6 +11,7 @@ import {
   buildChangeRanking,
   buildOverlapMatrix,
   changeRankingCsv,
+  cosineChange,
   defaultPeriods,
   diffLists,
   diffOverlap,
@@ -22,6 +23,7 @@ import {
   splitNull,
 } from "./overlap";
 import { buildOverlapDriftSeries } from "./series";
+import { buildSimilarityMatrix } from "./similarity";
 
 
 function indexed(name: string) {
@@ -143,6 +145,43 @@ describe("Wandel-Ranking", () => {
         expect(r.coverage === "beide").toBe(r.a.used > 0 && r.b.used > 0);
         if (r.coverage === "nur B") expect(r.freqA).toBe(0);
       }
+    });
+
+    it(`${file}: Kosinus über je eine Scheibe = 1 − Wert der Kosinus-Matrix`, () => {
+      const idx = indexed(file);
+      for (const t of idx.tracks) {
+        const m = buildSimilarityMatrix(idx, t.entity.id)!;
+        const present = m.present.flatMap((p, i) => (p ? [i] : []));
+        if (present.length < 2) continue;
+        const [i, j] = [present[0], present[present.length - 1]];
+        const c = cosineChange(idx, t.entity.id, { from: i, to: i }, { from: j, to: j });
+        expect(c.distance).toBeCloseTo(1 - m.values[i * m.n + j], 5);
+        // zwei Scheiben, zwei Aufteilungen (echte und Spiegel), beide gleich weit
+        expect(c.p).toBe(1);
+      }
+    });
+
+    it(`${file}: Sortierung nach Kosinus folgt rankCos, beide Ränge gesetzt`, () => {
+      const idx = indexed(file);
+      const { a, b } = defaultPeriods(idx);
+      const ids = idx.tracks.map((t) => t.entity.id);
+      const rows = buildChangeRanking(idx, ids, a, b, 5, "kosinus");
+      const ranks = rows.map((r) => r.rankCos).filter((x): x is number => x !== null);
+      expect(ranks).toEqual(ranks.map((_, i) => i + 1));
+      const gaps = rows.filter((r) => r.rankCos !== null).map((r) => r.cos.gap);
+      expect([...gaps].sort((x, y) => y - x)).toEqual(gaps);
+      for (const r of rows) {
+        expect(r.rankOverlap === null).toBe(!Number.isFinite(r.gap));
+        if (Number.isFinite(r.cos.distance)) {
+          expect(r.cos.distance).toBeGreaterThanOrEqual(-1e-9);
+          expect(r.cos.distance).toBeLessThanOrEqual(2);
+          expect(r.cos.p).toBeGreaterThan(0);
+          expect(r.cos.p).toBeLessThanOrEqual(1);
+        }
+      }
+      // gleiche Zeilen, nur andere Reihenfolge
+      const byOverlap = buildChangeRanking(idx, ids, a, b, 5);
+      expect(new Set(byOverlap.map((r) => r.entityId))).toEqual(new Set(rows.map((r) => r.entityId)));
     });
 
     it(`${file}: CSV hat eine Zeile je Zielwort und Ränge nur bei Überlappung`, () => {
