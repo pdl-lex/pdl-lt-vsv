@@ -318,7 +318,6 @@ function DetailCard({ stat, xLabels, shift }: { stat: TargetStat; xLabels: strin
       </div>
       <p className="card__note">
         Die Kurve setzt aus, wo das Wort nicht belegt ist.
-        {shift !== null && " Gestrichelt: Zäsur des Bundles."}
       </p>
     </section>
   );

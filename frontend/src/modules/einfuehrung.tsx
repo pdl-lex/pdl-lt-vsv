@@ -86,6 +86,10 @@ export function EinfuehrungMain() {
               ist, zeigt die Seite „Datenquelle".
             </li>
             <li>
+              Begriffe wie Anker, Belegung oder Zelle erklärt das{" "}
+              <a href="#" onClick={(e) => { e.preventDefault(); setActiveId("glossar"); }}>Glossar</a>.
+            </li>
+            <li>
               Über das <Icon name="info" size={12} style={{ verticalAlign: "-2px" }} /> unten
               in der Leiste links geht es zu Quellen, Methoden und Impressum.
             </li>

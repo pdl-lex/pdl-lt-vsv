@@ -14,6 +14,7 @@ import type { FC } from "react";
 import type { IconName } from "../design/icons";
 import { EinfuehrungMain } from "./einfuehrung";
 import { InfoMain } from "./info";
+import { GlossarMain } from "./glossar";
 import { DatenConfig, DatenMain } from "./daten";
 import { ZielwoerterMain } from "./zielwoerter";
 import { WortraumConfig, WortraumFooter, WortraumMain } from "./wortraum";
@@ -45,12 +46,21 @@ export interface ModuleDef {
 export const MODULES: ModuleDef[] = [
   {
     id: "einfuehrung",
-    label: "Einführung",
+    label: "Überblick",
     group: "Einführung",
     icon: "home",
     eyebrow: "Start",
     title: "Einführung",
     Main: EinfuehrungMain,
+  },
+  {
+    id: "glossar",
+    label: "Glossar",
+    group: "Einführung",
+    icon: "file",
+    eyebrow: "Einführung",
+    title: "Glossar",
+    Main: GlossarMain,
   },
   {
     id: "daten",

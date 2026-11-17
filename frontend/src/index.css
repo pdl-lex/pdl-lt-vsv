@@ -886,3 +886,30 @@ button, input, select, textarea { font-family: inherit; }
 .zw__strip { display: grid; gap: 2px; height: 14px; max-width: none; }
 .zw__cell { border-radius: 2px; }
 .zw__cell--empty { background: var(--lt-bg-3); }
+
+/* ── Glossar ──────────────────────────────────────────────────────────────── */
+.gl__search { width: 100%; }
+.gl { margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.gl__entry {
+  border: 1px solid var(--lt-line-1); border-radius: var(--lt-r-md);
+  background: var(--lt-bg-0); padding: 10px 14px;
+}
+.gl__term { font-weight: 600; font-size: 14px; }
+.gl__body { margin: 4px 0 0; display: flex; flex-direction: column; gap: 6px; }
+.gl__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: 11px; }
+.gl__label { color: var(--lt-fg-3); }
+.gl__label:not(:first-child) { margin-left: 8px; }
+.gl__scope {
+  background: var(--lt-primary-soft); color: var(--lt-primary);
+  padding: 1px 7px; border-radius: 999px; font-weight: 500;
+}
+.gl__var {
+  font-family: var(--lt-font-mono); font-size: 11px;
+  background: var(--lt-bg-2); padding: 1px 5px; border-radius: var(--lt-r-xs);
+}
+.doc .gl__text { margin: 0; color: var(--lt-fg-2); font-size: 13px; }
+.doc .gl__caveat {
+  margin: 0; align-self: flex-start; font-size: 11.5px; font-weight: 600;
+  background: var(--lt-warn-soft); color: var(--lt-warn);
+  border: 1px solid var(--lt-warn-line); padding: 1px 7px; border-radius: var(--lt-r-sm);
+}
