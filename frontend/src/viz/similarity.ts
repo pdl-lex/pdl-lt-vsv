@@ -9,7 +9,7 @@
  * Trajektorie allein nicht zeigt:
  *
  * - gleichmäßig hoch          → stabiles Wort
- * - zwei scharfe Blöcke       → ein abrupter Bruch (Zäsur)
+ * - zwei scharfe Blöcke       → ein abrupter Bruch
  * - Gradient von der Diagonale weg → kontinuierliche Drift
  * - wiederkehrende Blöcke     → Rückkehr zu früherem Gebrauch
  *

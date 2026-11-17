@@ -66,7 +66,6 @@ function PeriodPicker({
   const options = idx.sortedSlices.map((s, i) => (
     <option key={s.id} value={i}>
       {s.label ?? s.id}
-      {i === idx.shiftSliceIndex ? " · Zäsur" : ""}
     </option>
   ));
   return (
@@ -111,7 +110,7 @@ export function WandelConfig() {
           <PeriodPicker idx={indexed} name="B" value={active.b} onChange={(b) => setPeriods({ ...active, b })} />
           {periods !== null && (
             <button type="button" className="nf-link" onClick={() => setPeriods(null)}>
-              {indexed.shiftSliceIndex !== null ? "zurück: vor / ab Zäsur" : "zurück: erste / zweite Hälfte"}
+              zurück: erste / zweite Hälfte
             </button>
           )}
           <p className="mode__hint">

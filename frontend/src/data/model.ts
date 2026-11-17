@@ -53,8 +53,6 @@ export interface IndexedBundle {
   sortedSlices: TimeSlice[];
   sliceCount: number;
   sliceIndexById: Map<string, number>;
-  /** Index der als Zäsur markierten Scheibe (`meta.shift_point`), sonst null. */
-  shiftSliceIndex: number | null;
 
   tracks: EntityTrack[];
   /** Facettenaufgelöste Tracks je Entity-ID (aus `records`). */
@@ -249,10 +247,6 @@ export function indexBundle(bundle: Bundle): IndexedBundle {
   const sliceIndexById = new Map<string, number>();
   sortedSlices.forEach((s, i) => sliceIndexById.set(s.id, i));
 
-  const shift = bundle.meta.shift_point;
-  const shiftSliceIndex =
-    shift && sliceIndexById.has(shift) ? sliceIndexById.get(shift)! : null;
-
   // Aggregate (facets={}) je Entity gruppieren.
   const aggByEntity = new Map<string, Cell[]>();
   for (const cell of bundle.aggregates) {
@@ -327,7 +321,6 @@ export function indexBundle(bundle: Bundle): IndexedBundle {
     sortedSlices,
     sliceCount,
     sliceIndexById,
-    shiftSliceIndex,
     tracks,
     facetTracks,
     primaryFacetId,

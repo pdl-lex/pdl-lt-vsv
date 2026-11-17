@@ -175,7 +175,7 @@ export function ZielwoerterMain() {
         </div>
 
         <div className="pane__col">
-          {current && <DetailCard stat={current} xLabels={xLabels} shift={indexed.shiftSliceIndex} />}
+          {current && <DetailCard stat={current} xLabels={xLabels} />}
 
           <section className="card">
             <h3 className="card__title">Verteilung über alle Zielwörter</h3>
@@ -244,7 +244,7 @@ function SummaryRow({ label, s }: { label: string; s: Summary | null }) {
   );
 }
 
-function DetailCard({ stat, xLabels, shift }: { stat: TargetStat; xLabels: string[]; shift: number | null }) {
+function DetailCard({ stat, xLabels }: { stat: TargetStat; xLabels: string[] }) {
   const mode = useMode();
   const T = stat.freqs.length;
   const color = entityColor(stat.colorIndex, mode);
@@ -287,7 +287,6 @@ function DetailCard({ stat, xLabels, shift }: { stat: TargetStat; xLabels: strin
         domain={domain}
         mode={mode}
         height={220}
-        shiftSliceIndex={shift}
         format={(v) => fmt(v)}
       />
 

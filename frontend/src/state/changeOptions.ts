@@ -1,7 +1,7 @@
 /**
  * Optionen des Wandel-Rankings: die zwei verglichenen Zeiträume.
  *
- * `null` heißt „Standard des Bundles" (vor/ab Zäsur, `defaultPeriods`). So passt
+ * `null` heißt „Standard des Bundles" (erste gegen zweite Hälfte, `defaultPeriods`). So passt
  * die Voreinstellung nach einem Bundle-Wechsel von selbst, ohne dass dieser
  * Store vom Laden wissen muss; ausgewählte Indizes werden beim Rechnen geklemmt.
  */

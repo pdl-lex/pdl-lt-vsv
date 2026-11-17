@@ -31,7 +31,6 @@ export function SimilarityMatrixCanvas({
   domain,
   mode,
   size,
-  shiftSliceIndex,
   onHover,
   selected = null,
   onSelect,
@@ -41,8 +40,6 @@ export function SimilarityMatrixCanvas({
   mode: Mode;
   /** Kantenlänge der Plotfläche in CSS-Pixeln. */
   size: number;
-  /** Index der Zäsur (`meta.shift_point`) — als Hilfslinie auf beiden Achsen. */
-  shiftSliceIndex: number | null;
   onHover?: (cell: HoverCell | null) => void;
   /** Festgehaltene Zelle (Klick) — bekommt einen Rahmen. */
   selected?: { i: number; j: number } | null;
@@ -89,24 +86,7 @@ export function SimilarityMatrixCanvas({
 
     const ink = INK[mode];
 
-    // 3) Zäsur als Hilfslinie auf beiden Achsen — macht prüfbar, ob ein
-    //    Blockwechsel in der Matrix wirklich auf dem markierten Bruch liegt.
-    if (shiftSliceIndex !== null && shiftSliceIndex > 0 && shiftSliceIndex < n) {
-      const p = Math.round(shiftSliceIndex * cell) + 0.5;
-      ctx.save();
-      ctx.strokeStyle = mode === "light" ? "#b03a3a" : "#d97676";
-      ctx.lineWidth = 1;
-      ctx.setLineDash([3, 3]);
-      ctx.beginPath();
-      ctx.moveTo(p, 0);
-      ctx.lineTo(p, size);
-      ctx.moveTo(0, p);
-      ctx.lineTo(size, p);
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    // 4) Fadenkreuz auf der gehoverten Zelle (Hit-Fläche ist größer als 4px).
+    // 3) Fadenkreuz auf der gehoverten Zelle (Hit-Fläche ist größer als 4px).
     if (hover) {
       ctx.save();
       ctx.strokeStyle = ink.primary;
@@ -134,11 +114,11 @@ export function SimilarityMatrixCanvas({
       ctx.restore();
     }
 
-    // 5) Rahmen zuletzt, damit er nicht von Zellen überschrieben wird.
+    // 4) Rahmen zuletzt, damit er nicht von Zellen überschrieben wird.
     ctx.strokeStyle = ink.baseline;
     ctx.lineWidth = 1;
     ctx.strokeRect(0.5, 0.5, size - 1, size - 1);
-  }, [matrix, domain.min, domain.max, mode, size, shiftSliceIndex, hover, selected?.i, selected?.j]);
+  }, [matrix, domain.min, domain.max, mode, size, hover, selected?.i, selected?.j]);
 
   const cellAt = (e: React.MouseEvent<HTMLCanvasElement>): HoverCell | null => {
     const rect = e.currentTarget.getBoundingClientRect();

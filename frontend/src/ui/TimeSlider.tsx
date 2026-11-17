@@ -1,7 +1,7 @@
 /**
  * Zeitachse: kontinuierlicher Slider über die Zeitscheiben (Interpolation macht
- * die Bewegung glatt), mit Abspiel-Button und einer Markierung der Zäsur
- * (`meta.shift_point`). Reine Client-Interaktion, kein Server-Roundtrip.
+ * die Bewegung glatt), mit Abspiel-Button.
+ * Reine Client-Interaktion, kein Server-Roundtrip.
  */
 import { useEffect, useRef, useState } from "react";
 import { useViz, useVizPick } from "../state/store";
@@ -21,7 +21,7 @@ export function TimeSlider() {
   }, []);
 
   if (!indexed) return null;
-  const { sortedSlices, sliceCount, shiftSliceIndex } = indexed;
+  const { sortedSlices, sliceCount } = indexed;
   const maxT = Math.max(0, sliceCount - 1);
   const idxNow = Math.max(0, Math.min(Math.round(sliceT), maxT));
   const slice = sortedSlices[idxNow];
@@ -58,8 +58,6 @@ export function TimeSlider() {
     }
   };
 
-  const shiftPct = shiftSliceIndex !== null && maxT > 0 ? (shiftSliceIndex / maxT) * 100 : null;
-
   return (
     <div className="timeslider">
       <button
@@ -82,13 +80,6 @@ export function TimeSlider() {
             setSliceT(parseFloat(e.target.value));
           }}
         />
-        {shiftPct !== null && (
-          <div
-            className="timeslider__shift"
-            style={{ left: `${shiftPct}%` }}
-            title={`Zäsur: ${indexed.bundle.meta.shift_point}`}
-          />
-        )}
       </div>
       <div className="timeslider__label lt-mono">{slice?.label ?? slice?.id ?? "—"}</div>
     </div>

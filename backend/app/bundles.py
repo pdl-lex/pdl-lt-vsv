@@ -32,7 +32,6 @@ class BundleSummary(BaseModel):
     description: str = ""
     vector_dim: int | None = None
     projection: str | None = None
-    shift_point: str | None = None
     entities: int = 0
     time_slices: int = 0
     facets: list[str] = []
@@ -69,7 +68,6 @@ def _summarize(path: Path) -> BundleSummary | None:
         description=meta.get("description", ""),
         vector_dim=meta.get("vector_dim"),
         projection=meta.get("projection"),
-        shift_point=meta.get("shift_point"),
         entities=len(data.get("entities") or []),
         time_slices=len(data.get("time_slices") or []),
         facets=[f.get("id") for f in facets_schema if isinstance(f, dict) and f.get("id")],

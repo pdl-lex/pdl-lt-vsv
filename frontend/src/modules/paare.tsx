@@ -62,8 +62,8 @@ export function PaareConfig() {
           <dd>die beiden Wörter rücken zusammen (Konvergenz).</dd>
           <dt>fallende Kurve</dt>
           <dd>sie entfernen sich voneinander (Divergenz).</dd>
-          <dt>Sprung an der Zäsur</dt>
-          <dd>das Verhältnis der beiden Wörter kippt am markierten Bruch.</dd>
+          <dt>Sprung</dt>
+          <dd>das Verhältnis der beiden Wörter kippt abrupt.</dd>
           <dt>Lücke</dt>
           <dd>mindestens eines der beiden Wörter ist zu dieser Zeit nicht belegt.</dd>
         </dl>
@@ -153,7 +153,6 @@ export function PaareMain() {
           domain={domain}
           mode={mode}
           height={320}
-          shiftSliceIndex={indexed.shiftSliceIndex}
           format={(v) => v.toFixed(3)}
         />
         <ChartLegend series={lines} />

@@ -61,13 +61,11 @@ export function NeighborFlowCanvas({
   flow,
   xLabels,
   mode,
-  shiftSliceIndex,
   height,
 }: {
   flow: NeighborFlow;
   xLabels: string[];
   mode: Mode;
-  shiftSliceIndex: number | null;
   height?: number;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -146,21 +144,7 @@ export function NeighborFlowCanvas({
       ctx.fillText(String(r), PAD.left - 8, y);
     }
 
-    // 3) Zäsur — dieselbe Hilfslinie wie in Matrix und Kurven.
-    if (shiftSliceIndex !== null && shiftSliceIndex >= 0 && shiftSliceIndex < n) {
-      const x = Math.round(xAt(shiftSliceIndex)) + 0.5;
-      ctx.save();
-      ctx.strokeStyle = mode === "light" ? "#b03a3a" : "#d97676";
-      ctx.lineWidth = 1;
-      ctx.setLineDash([3, 3]);
-      ctx.beginPath();
-      ctx.moveTo(x, PAD.top);
-      ctx.lineTo(x, PAD.top + plotH + STRIP_GAP + STRIP_H);
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    // 4) Rang-Linien je Nachbar, Lauf für Lauf.
+    // 3) Rang-Linien je Nachbar, Lauf für Lauf.
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
     for (const l of flow.labels) {
@@ -201,7 +185,7 @@ export function NeighborFlowCanvas({
       ctx.restore();
     }
 
-    // 5) Beschriftung: rechts für Nachbarn, die am Ende noch dabei sind;
+    // 4) Beschriftung: rechts für Nachbarn, die am Ende noch dabei sind;
     //    inline (mit Fläche hinterlegt) am Eintritt für alle anderen.
     ctx.font = FONT_SANS;
     ctx.textBaseline = "middle";
@@ -255,7 +239,7 @@ export function NeighborFlowCanvas({
       ctx.restore();
     }
 
-    // 6) Umschlag-Streifen (Balken je Zeitscheibe) + x-Achse.
+    // 5) Umschlag-Streifen (Balken je Zeitscheibe) + x-Achse.
     const stripTop = PAD.top + plotH + STRIP_GAP;
     ctx.strokeStyle = ink.baseline;
     ctx.lineWidth = 1;
@@ -285,7 +269,7 @@ export function NeighborFlowCanvas({
       ctx.fillText(xLabels[i], xAt(i), stripTop + STRIP_H + 5);
     }
 
-    // 7) Fadenkreuz zuletzt.
+    // 6) Fadenkreuz zuletzt.
     if (hover) {
       const x = Math.round(xAt(hover.sliceIndex)) + 0.5;
       ctx.save();
@@ -297,7 +281,7 @@ export function NeighborFlowCanvas({
       ctx.stroke();
       ctx.restore();
     }
-  }, [flow, xLabels, mode, width, total, plotW, plotH, stepX, n, shiftSliceIndex, hover]);
+  }, [flow, xLabels, mode, width, total, plotW, plotH, stepX, n, hover]);
 
   const pick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();

@@ -483,10 +483,6 @@ button, input, select, textarea { font-family: inherit; }
 .timeslider__play:hover { border-color: var(--lt-line-2); background: var(--lt-bg-2); }
 .timeslider__track { position: relative; flex: 1; display: flex; align-items: center; }
 .timeslider__track input[type="range"] { width: 100%; accent-color: var(--lt-primary); }
-.timeslider__shift {
-  position: absolute; top: 50%; width: 2px; height: 18px; margin-top: -9px;
-  background: var(--lt-err); transform: translateX(-1px); pointer-events: none;
-}
 .timeslider__label {
   min-width: 96px; text-align: right; font-size: 12px; color: var(--lt-fg-2);
 }

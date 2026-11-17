@@ -3,8 +3,8 @@
  * Modulen „Drift-Kurven" und „Wort gegen Wort".
  *
  * Warum ein eigener Renderer statt einer Chart-Bibliothek: gebraucht wird genau
- * eine lineare Skala, Linien mit **echten Lücken** und die Zäsur-Hilfslinie —
- * dieselben drei Dinge wie in der Matrix. Eine Bibliothek würde vor allem ihre
+ * eine lineare Skala und Linien mit **echten Lücken** — dieselben Dinge wie in
+ * der Matrix. Eine Bibliothek würde vor allem ihre
  * eigene Farb- und Achsenlogik mitbringen, die hier ohnehin von `viz/theme.ts`
  * kommt (specs.md §3: kein D3).
  *
@@ -79,7 +79,6 @@ export function LineChart({
   domain,
   mode,
   height = 300,
-  shiftSliceIndex,
   markIndex,
   markLabel,
   format = (v: number) => v.toFixed(3),
@@ -91,8 +90,6 @@ export function LineChart({
   domain: { min: number; max: number };
   mode: Mode;
   height?: number;
-  /** Zäsur (`meta.shift_point`) als gestrichelte Hilfslinie. */
-  shiftSliceIndex: number | null;
   /** Zusätzliche Markierung, z.B. die Referenzscheibe der Drift. */
   markIndex?: number | null;
   markLabel?: string;
@@ -179,21 +176,7 @@ export function LineChart({
       ctx.restore();
     }
 
-    // 4) Zäsur — dieselbe gestrichelte rote Hilfslinie wie in der Matrix.
-    if (shiftSliceIndex !== null && shiftSliceIndex >= 0 && shiftSliceIndex < n) {
-      const x = Math.round(xAt(shiftSliceIndex)) + 0.5;
-      ctx.save();
-      ctx.strokeStyle = mode === "light" ? "#b03a3a" : "#d97676";
-      ctx.lineWidth = 1;
-      ctx.setLineDash([3, 3]);
-      ctx.beginPath();
-      ctx.moveTo(x, PAD.top);
-      ctx.lineTo(x, PAD.top + plotH);
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    // 5) Linien mit echten Lücken; isolierte Werte als Punkt.
+    // 4) Linien mit echten Lücken; isolierte Werte als Punkt.
     ctx.lineWidth = 2;
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
@@ -221,7 +204,7 @@ export function LineChart({
       flush();
     }
 
-    // 6) Direktbeschriftung am letzten belegten Punkt (ab ≤ 4 Serien).
+    // 5) Direktbeschriftung am letzten belegten Punkt (ab ≤ 4 Serien).
     if (direct) {
       const labels: { y: number; color: string; text: string }[] = [];
       for (const s of series) {
@@ -257,7 +240,7 @@ export function LineChart({
       }
     }
 
-    // 7) Fadenkreuz + Punkte an der gehoverten Zeitscheibe.
+    // 6) Fadenkreuz + Punkte an der gehoverten Zeitscheibe.
     if (hover !== null && hover >= 0 && hover < n) {
       const x = Math.round(xAt(hover)) + 0.5;
       ctx.save();
@@ -285,7 +268,7 @@ export function LineChart({
     }
   }, [
     series, xLabels, domain.min, domain.max, mode, width, height, hover,
-    shiftSliceIndex, markIndex, markLabel, format, n, plotW, plotH, direct,
+    markIndex, markLabel, format, n, plotW, plotH, direct,
   ]);
 
   const pick = (e: React.MouseEvent<HTMLCanvasElement>) => {

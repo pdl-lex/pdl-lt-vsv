@@ -46,8 +46,7 @@ Bundle wird einmal geladen und von allen Modulen geteilt — ein Modulwechsel ve
 
 - **3D-Punktwolke** (react-three-fiber): Anker als beschriftete Landmarken,
   Zielwörter als bewegte Punkte, Kamera-Navigation.
-- **Zeitachse**: kontinuierlicher Slider mit Interpolation, Abspiel-Button,
-  Markierung der Zäsur (`meta.shift_point`).
+- **Zeitachse**: kontinuierlicher Slider mit Interpolation und Abspiel-Button.
 - **Trajektorien** je Zielwort mit Lücken-Behandlung (leere `freq==0`-Zellen
   unterbrechen den Pfad statt Bewegung zu erfinden).
 - **Nearest-Neighbour-Overlay** + Panel (score/group) beim Scrubben, Länge per
@@ -132,8 +131,6 @@ Wort gewandert ist; die Matrix zeigt, *wie* — Bruch, stetige Drift oder Rückk
   Ähnlichkeit absichtlich gegen die Fläche zurücktreten.
 - **Skala umschaltbar** gemeinsam ↔ je Matrix: gemeinsam macht Wörter
   vergleichbar, je Matrix macht die Binnenstruktur maximal sichtbar.
-- Die **Zäsur** (`meta.shift_point`) liegt als Hilfslinie auf beiden Achsen —
-  damit prüfbar ist, ob ein Blockwechsel wirklich dort sitzt.
 - **Metrik umschaltbar: Kosinus ↔ Nachbarschafts-Überlappung** (siehe unten).
   Klick auf eine Zelle der Detailansicht zeigt die Nachbarn beider Zeitscheiben
   als gemeinsame, weggefallene und hinzugekommene.
@@ -185,8 +182,8 @@ Die Frage ist hier nicht *wie* (Matrix) oder *wann* (Drift), sondern *welches
 Wort* sich zwischen zwei Zeiträumen am stärksten verändert hat – und woran man es
 sieht.
 
-- **Zwei Zeiträume A und B** wählbar (Standard: vor/ab Zäsur `meta.shift_point`,
-  ohne Zäsur die zwei Hälften). Je Zeitraum werden die Nachbarlisten der
+- **Zwei Zeiträume A und B** wählbar (Standard: erste gegen zweite
+  Hälfte der Zeitscheiben). Je Zeitraum werden die Nachbarlisten der
   belegten Scheiben per Rangpunkten (Borda) zu einer Liste zusammengelegt: jede
   Liste auf die ersten k gekürzt, Rang r bekommt k − r Punkte. So hängt das
   Ergebnis nur von den Top-k ab, nicht von der Länge der gelieferten Listen
@@ -227,7 +224,7 @@ Die Ansicht, die eine gemessene Verschiebung **in Wörter übersetzt**.
   dort Nachbarn mitliefert.
 - **Umschlag-Streifen** (↻) unter dem Plot: Anteil der Top-k, der gegenüber der
   Vorscheibe neu ist. Auf den Demo-Daten liegt der stärkste Umschlag für
-  *Bundeswehr* mit 63 % genau auf der Zäsur.
+  *Bundeswehr* mit 63 % bei 2022Q1.
 - Tabelle aller Nachbarn mit Gruppe, bestem Rang, Dauer und Zeitraum.
 
 Noch nicht enthalten (Planung im internen Spezifikationsdokument, nicht im Repo): serverseitige

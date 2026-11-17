@@ -189,13 +189,10 @@ export interface Period {
   to: number;
 }
 
-/** Standard: vor der Zäsur gegen ab der Zäsur; ohne Zäsur die zwei Hälften. */
+/** Standard: erste gegen zweite Hälfte der Zeitscheiben. */
 export function defaultPeriods(idx: IndexedBundle): { a: Period; b: Period } {
   const n = idx.sliceCount;
-  const cut =
-    idx.shiftSliceIndex !== null && idx.shiftSliceIndex > 0 && idx.shiftSliceIndex < n
-      ? idx.shiftSliceIndex
-      : Math.max(1, Math.floor(n / 2));
+  const cut = Math.max(1, Math.floor(n / 2));
   return { a: { from: 0, to: cut - 1 }, b: { from: cut, to: n - 1 } };
 }
 

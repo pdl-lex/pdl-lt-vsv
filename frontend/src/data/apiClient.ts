@@ -13,7 +13,6 @@ export interface BundleSummary {
   description: string;
   vector_dim: number | null;
   projection: string | null;
-  shift_point: string | null;
   entities: number;
   time_slices: number;
   facets: string[];

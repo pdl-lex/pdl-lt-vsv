@@ -93,7 +93,7 @@ describe("buildSimilarityMatrix gegen die Demo-Bundles", () => {
 
   it("bildet ein teilbelegtes Wort als teilweise maskierte Matrix ab", () => {
     // "zeitenwende" ist das einzige Zielwort mit Leerzellen: das Wort existiert
-    // vor der Zäsur nicht (43 von 64 Quartalen unbelegt). Genau dort darf die
+    // vor 2022 nicht (43 von 64 Quartalen unbelegt). Genau dort darf die
     // Matrix nichts zeigen — der Fall, den die Maskierung abdecken muss.
     const idx = indexed("zeitenwende_demo.json");
     const m = buildSimilarityMatrix(idx, "zeitenwende")!;

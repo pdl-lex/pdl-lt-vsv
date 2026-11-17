@@ -81,7 +81,6 @@ export function DriftConfig() {
               {indexed.sortedSlices.map((s, i) => (
                 <option key={s.id} value={i}>
                   {s.label ?? s.id}
-                  {i === indexed.shiftSliceIndex ? " · Zäsur" : ""}
                 </option>
               ))}
             </select>
@@ -234,7 +233,6 @@ export function DriftMain() {
           domain={domain}
           mode={mode}
           height={320}
-          shiftSliceIndex={indexed.shiftSliceIndex}
           markIndex={markIndex}
           markLabel={markIndex !== null && markIndex !== undefined ? "Bezug" : undefined}
           format={(v) => v.toFixed(3)}

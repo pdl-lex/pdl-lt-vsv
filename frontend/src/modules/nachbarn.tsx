@@ -181,7 +181,6 @@ export function NachbarnMain() {
           flow={flow}
           xLabels={xLabels}
           mode={mode}
-          shiftSliceIndex={indexed.shiftSliceIndex}
         />
       </section>
 

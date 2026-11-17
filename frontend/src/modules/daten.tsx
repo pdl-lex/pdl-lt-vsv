@@ -143,8 +143,6 @@ export function DatenMain() {
               <dd>{meta.projection ?? "—"}</dd>
               <dt>Vektordimension</dt>
               <dd className="lt-mono">{meta.vector_dim ?? "?"} (nach SVD)</dd>
-              <dt>Zäsur</dt>
-              <dd className="lt-mono">{meta.shift_point ?? "keine"}</dd>
               <dt>Ähnlichkeiten berechnet auf</dt>
               <dd>
                 {simSource === "vector" ? (

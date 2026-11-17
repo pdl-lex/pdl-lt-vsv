@@ -39,8 +39,6 @@ export const metaSchema = z
     // ausführliche Beschreibung steht in `projection`.
     method: z.string().optional(),
     projection: z.string().optional(),
-    // Zäsur (z.B. "2022Q1"); darf fehlen oder null sein (generic-Demo).
-    shift_point: z.string().nullish(),
     // Stufe 2 (k → 3, zentrierte PCA): echte erklärte Varianz.
     // In-sample: gilt für die Punkte, auf denen die PCA gefittet wurde
     // (Aggregate + Anker).

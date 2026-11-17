@@ -149,7 +149,6 @@ function MatrixCard({
             domain={domain}
             mode={mode}
             size={SMALL}
-            shiftSliceIndex={indexed.shiftSliceIndex}
             onHover={setHover}
           />
           {/* Beim Hovern wird die Achsenzeile zur Zellenauslesung – bei ~3px
@@ -244,7 +243,6 @@ function MatrixDetail({
             domain={domain}
             mode={mode}
             size={LARGE}
-            shiftSliceIndex={indexed.shiftSliceIndex}
             onHover={setHover}
             selected={picked}
             onSelect={(c) => setPicked(c.i === c.j ? null : { i: c.i, j: c.j })}
