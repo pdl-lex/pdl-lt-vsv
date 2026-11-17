@@ -1,4 +1,4 @@
-# pdl-lt-vsv
+# pdl-lt-vsv (Version: Leipzig 0.1)
 **VSV – Visualisierung Semantischer Vektoren.** Visualisierungstool für **diachrone Vektor-Datensätze** – im Geist des TensorFlow
 Projectors, aber mit der **Zeit als wichtigster Achse**. Primärer Anwendungsfall
 ist das DNB-Zeitenwende-Projekt (Wandel deutschen Militär-/Verteidigungsvokabulars
