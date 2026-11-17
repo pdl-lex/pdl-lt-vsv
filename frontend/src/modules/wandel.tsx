@@ -21,7 +21,8 @@ import { useMetricOptions } from "../state/metricOptions";
 import { useChangeOptions } from "../state/changeOptions";
 import { useMode } from "../viz/useMode";
 import { entityColor } from "../viz/theme";
-import { buildChangeRanking, defaultPeriods, effectiveK, type Period } from "../viz/overlap";
+import { buildChangeRanking, changeRankingCsv, defaultPeriods, effectiveK, type Period } from "../viz/overlap";
+import { downloadText } from "../ui/download";
 import type { IndexedBundle } from "../data/model";
 import { Section } from "../ui/Section";
 import { TargetWords } from "../ui/Legend";
@@ -135,7 +136,11 @@ export function WandelConfig() {
           <dt>Zufall (Strich im Balken)</dt>
           <dd>Grundrauschen: die belegten Scheiben von A und B ohne Rücksicht auf ihren Zeitraum auf zwei gleich große Gruppen verteilt, gepoolt und verglichen (Mittel über die Aufteilungen). So viel Überlappung ist ohne Unterschied zwischen A und B zu erwarten — bei derselben Pooling-Tiefe wie A ↔ B.</dd>
           <dt>Abstand</dt>
-          <dd>Zufall minus A ↔ B. Nur ein deutlich positiver Abstand spricht für Wandel; um 0 ist er von der üblichen Schwankung nicht zu unterscheiden.</dd>
+          <dd>Zufall minus A ↔ B, Sortierschlüssel der Tabelle. Nur ein deutlich positiver Abstand spricht für Wandel; um 0 ist er von der üblichen Schwankung nicht zu unterscheiden. Nach der rohen Überlappung zu sortieren hieße, dünn belegte Wörter nach oben zu holen: ihre Listen schwanken schon innerhalb eines Zeitraums.</dd>
+          <dt>p</dt>
+          <dd>Anteil der zufälligen Aufteilungen, deren Überlappung höchstens so groß ist wie A ↔ B, als (b + 1) / (m + 1). Klein = A ↔ B liegt tiefer als fast jede zufällige Aufteilung; fett unter 0,05. Mit wenigen Scheiben gibt es nur wenige Aufteilungen, dann kann p nicht klein werden (bei 3 + 3 Scheiben höchstens 1/21). Kein Test über alle Wörter hinweg: bei vielen Zielwörtern sind einige kleine p-Werte zufällig.</dd>
+          <dt>Nur in einem Zeitraum belegt</dt>
+          <dd>Wörter ohne Beleg in A oder in B haben keine Überlappung. Sie stehen getrennt, nach Belegen sortiert: neu aufgekommene (nur B) zuerst.</dd>
           <dt>Binnen A / B</dt>
           <dd>Wie stabil das Umfeld innerhalb eines Zeitraums ist: seine Scheiben abwechselnd in zwei Hälften geteilt und verglichen. Beschreibend; geht nicht in den Abstand ein, weil die Hälften nur halb so viele Scheiben poolen.</dd>
         </dl>
@@ -193,6 +198,20 @@ export function WandelMain() {
   const k = effectiveK(indexed, overlapK);
   const colorIndex = new Map(indexed.tracks.map((t, i) => [t.entity.id, i]));
   const open = rows.find((r) => r.entityId === openEntityId && r.diff);
+  const ranked = rows.filter((r) => r.coverage === "beide" && Number.isFinite(r.between));
+  const oneSided = rows.filter((r) => !(r.coverage === "beide" && Number.isFinite(r.between)));
+
+  const download = () => {
+    const name = (indexed.bundle.meta.name ?? "bundle").replace(/[^\p{L}\p{N}_-]+/gu, "_");
+    downloadText(
+      changeRankingCsv(rows, { periodA: la, periodB: lb, k }),
+      `wandel_${name}_k${k}.csv`,
+      "text/csv;charset=utf-8",
+    );
+  };
+  const swatch = (id: string) => (
+    <span className="swatch" style={{ background: entityColor(colorIndex.get(id) ?? 0, mode) }} />
+  );
 
   return (
     <div className="pane">
@@ -203,11 +222,14 @@ export function WandelMain() {
           <p className="pane__desc">
             Welche Zielwörter haben zwischen <strong>A</strong> ({la}) und{" "}
             <strong>B</strong> ({lb}) ihr Umfeld am stärksten gewechselt?{" "}
-            <code>|NN_k(A) ∩ NN_k(B)| / k</code> mit k = {k}, am stärksten
-            verändert zuerst.
+            <code>|NN_k(A) ∩ NN_k(B)| / k</code> mit k = {k}, sortiert nach dem
+            Abstand zur Zufalls-Überlappung (größter Abstand zuerst).
           </p>
         </div>
         <NeighborFilterNote short />
+        <button type="button" className="nf-btn" onClick={download} title="Alle ausgewählten Zielwörter, Reihenfolge wie in der Tabelle">
+          Als CSV speichern
+        </button>
       </div>
 
       <section className="card">
@@ -218,31 +240,29 @@ export function WandelMain() {
               <th>Wort</th>
               <th>A ↔ B</th>
               <th className="tbl__num" title="Erwartete Überlappung bei zufälliger Aufteilung der Scheiben von A und B">Zufall</th>
-              <th className="tbl__num" title="Zufall minus A ↔ B, in Prozentpunkten">Abstand</th>
+              <th className="tbl__num" title="Zufall minus A ↔ B, in Prozentpunkten; Sortierschlüssel">Abstand</th>
+              <th className="tbl__num" title="Anteil zufälliger Aufteilungen mit höchstens so viel Überlappung wie A ↔ B">p</th>
               <th className="tbl__num" title="Stabilität innerhalb des Zeitraums (Hälften gegeneinander), beschreibend">Binnen A</th>
               <th className="tbl__num" title="Stabilität innerhalb des Zeitraums (Hälften gegeneinander), beschreibend">Binnen B</th>
               <th className="tbl__num" title="Belegte Zeitscheiben je Zeitraum">Belegung A · B</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((r, rank) => {
+            {ranked.map((r, rank) => {
               const noise = r.baseline;
-              const gap = noise - r.between;
+              const gap = r.gap;
               const isOpen = open?.entityId === r.entityId;
               return (
                 <tr
                   key={r.entityId}
-                  className={`${r.diff ? "tbl__row--click" : ""} ${isOpen ? "tbl__row--open" : ""}`}
-                  onClick={() => r.diff && setOpenEntityId(isOpen ? null : r.entityId)}
-                  title={r.diff ? "Nachbarn anzeigen" : "In einem Zeitraum nicht belegt"}
+                  className={`tbl__row--click ${isOpen ? "tbl__row--open" : ""}`}
+                  onClick={() => setOpenEntityId(isOpen ? null : r.entityId)}
+                  title="Nachbarn anzeigen"
                 >
-                  <td className="tbl__num tbl__muted lt-mono">{Number.isFinite(r.between) ? rank + 1 : "—"}</td>
+                  <td className="tbl__num tbl__muted lt-mono">{rank + 1}</td>
                   <td>
                     <span className="tbl__word">
-                      <span
-                        className="swatch"
-                        style={{ background: entityColor(colorIndex.get(r.entityId) ?? 0, mode) }}
-                      />
+                      {swatch(r.entityId)}
                       {r.label}
                     </span>
                   </td>
@@ -252,6 +272,9 @@ export function WandelMain() {
                   <td className="tbl__num lt-mono">{pct(noise)}</td>
                   <td className={`tbl__num lt-mono ${gap > 0.1 ? "tbl__strong" : "tbl__muted"}`}>
                     {Number.isFinite(gap) ? `${gap > 0 ? "+" : ""}${Math.round(gap * 100)}` : "—"}
+                  </td>
+                  <td className={`tbl__num lt-mono ${r.p < 0.05 ? "tbl__strong" : "tbl__muted"}`}>
+                    {Number.isFinite(r.p) ? r.p.toFixed(2).replace(".", ",") : "—"}
                   </td>
                   <td className="tbl__num lt-mono tbl__muted">{pct(r.withinA)}</td>
                   <td className="tbl__num lt-mono tbl__muted">{pct(r.withinB)}</td>
@@ -267,10 +290,46 @@ export function WandelMain() {
           Der Strich im Balken markiert die Zufalls-Überlappung: die Scheiben von A
           und B zufällig auf zwei gleich große Gruppen verteilt. Liegt der Balken
           deutlich links davon, unterscheiden sich die Zeiträume stärker als
-          beliebige Gruppen derselben Scheiben. Klick auf eine Zeile
-          zeigt, welche Nachbarn weggefallen und hinzugekommen sind.
+          beliebige Gruppen derselben Scheiben. Sortiert ist nach diesem Abstand,
+          nicht nach der Überlappung selbst. Klick auf eine Zeile zeigt, welche
+          Nachbarn weggefallen und hinzugekommen sind.
         </p>
       </section>
+
+      {oneSided.length > 0 && (
+        <section className="card">
+          <h3 className="card__title">Nur in einem Zeitraum belegt</h3>
+          <table className="tbl tbl--rows">
+            <thead>
+              <tr>
+                <th>Wort</th>
+                <th>Belegt in</th>
+                <th className="tbl__num" title="Summe der Belege (freq) im Zeitraum">Belege A · B</th>
+                <th className="tbl__num" title="Belegte Zeitscheiben je Zeitraum">Belegung A · B</th>
+              </tr>
+            </thead>
+            <tbody>
+              {oneSided.map((r) => (
+                <tr key={r.entityId}>
+                  <td>
+                    <span className="tbl__word">
+                      {swatch(r.entityId)}
+                      {r.label}
+                    </span>
+                  </td>
+                  <td className={r.coverage === "nur B" ? "tbl__strong" : "tbl__muted"}>
+                    {r.coverage === "nur B" ? "nur B (neu)" : r.coverage === "nur A" ? "nur A (weggefallen)" : "keiner"}
+                  </td>
+                  <td className="tbl__num lt-mono">{r.freqA} · {r.freqB}</td>
+                  <td className="tbl__num lt-mono tbl__muted">
+                    {r.a.used}/{r.a.total} · {r.b.used}/{r.b.total}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
 
       {open?.diff && (
         <DiffView diff={open.diff} labelA={`A (${la})`} labelB={`B (${lb})`} title={`${open.label}:`} />

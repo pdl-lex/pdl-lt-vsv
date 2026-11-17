@@ -296,7 +296,9 @@ const GROUPS: Group[] = [
         text: (
           <>
             Wie viele der k nächsten Nachbarn zwei Zeitscheiben gemeinsam haben. Wenig Überlappung
-            heißt: Das Wort hat sein Umfeld gewechselt. Grundlage des Wandel-Rankings.
+            heißt: Das Wort hat sein Umfeld gewechselt. Grundlage des Wandel-Rankings; dort zählt
+            nicht die Überlappung selbst, sondern ihr Abstand zur Zufalls-Überlappung, denn
+            dünn belegte Wörter haben auch ohne Wandel wenig gemeinsame Nachbarn.
           </>
         ),
       },

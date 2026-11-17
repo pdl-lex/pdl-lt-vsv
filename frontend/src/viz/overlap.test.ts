@@ -10,6 +10,7 @@ import { entityFreqAt, indexBundle } from "../data/model";
 import {
   buildChangeRanking,
   buildOverlapMatrix,
+  changeRankingCsv,
   defaultPeriods,
   diffLists,
   diffOverlap,
@@ -18,6 +19,7 @@ import {
   overlap,
   pooledNeighbors,
   splitBaseline,
+  splitNull,
 } from "./overlap";
 import { buildOverlapDriftSeries } from "./series";
 
@@ -119,21 +121,41 @@ describe("Wandel-Ranking", () => {
       expect(new Set(pooled.labels)).toEqual(neighborSets(idx, id, 5)[i]);
     });
 
-    it(`${file}: Ranking ist aufsteigend nach Überlappung, leere Zeilen zuletzt`, () => {
+    it(`${file}: Ranking absteigend nach Abstand zum Zufall, einseitig belegte zuletzt`, () => {
       const idx = indexed(file);
       const { a, b } = defaultPeriods(idx);
       expect(a.to + 1).toBe(b.from);
       const rows = buildChangeRanking(idx, idx.tracks.map((t) => t.entity.id), a, b, 5);
       expect(rows).toHaveLength(idx.tracks.length);
-      const finite = rows.filter((r) => Number.isFinite(r.between)).map((r) => r.between);
-      expect([...finite].sort((x, y) => x - y)).toEqual(finite);
-      const firstNaN = rows.findIndex((r) => !Number.isFinite(r.between));
-      if (firstNaN !== -1) expect(rows.slice(firstNaN).every((r) => !Number.isFinite(r.between))).toBe(true);
+      const gaps = rows.filter((r) => Number.isFinite(r.gap)).map((r) => r.gap);
+      expect([...gaps].sort((x, y) => y - x)).toEqual(gaps);
+      const firstNaN = rows.findIndex((r) => !Number.isFinite(r.gap));
+      if (firstNaN !== -1) expect(rows.slice(firstNaN).every((r) => !Number.isFinite(r.gap))).toBe(true);
       for (const r of rows) {
         expect(r.a.labels.length).toBeLessThanOrEqual(5);
         if (Number.isFinite(r.withinA)) expect(r.withinA).toBeLessThanOrEqual(1);
         expect(Number.isFinite(r.baseline)).toBe(Number.isFinite(r.between));
+        expect(Number.isFinite(r.p)).toBe(Number.isFinite(r.between));
+        if (Number.isFinite(r.p)) {
+          expect(r.p).toBeGreaterThan(0);
+          expect(r.p).toBeLessThanOrEqual(1);
+        }
+        expect(r.coverage === "beide").toBe(r.a.used > 0 && r.b.used > 0);
+        if (r.coverage === "nur B") expect(r.freqA).toBe(0);
       }
+    });
+
+    it(`${file}: CSV hat eine Zeile je Zielwort und Ränge nur bei Überlappung`, () => {
+      const idx = indexed(file);
+      const { a, b } = defaultPeriods(idx);
+      const rows = buildChangeRanking(idx, idx.tracks.map((t) => t.entity.id), a, b, 5);
+      const lines = changeRankingCsv(rows, { periodA: "A", periodB: "B", k: 5 }).trimEnd().split("\n");
+      expect(lines).toHaveLength(rows.length + 1);
+      expect(lines[0].split(",")[0]).toBe("rank");
+      rows.forEach((r, i) => {
+        const rank = lines[i + 1].split(",")[0];
+        expect(rank === "").toBe(!Number.isFinite(r.between));
+      });
     });
 
     it(`${file}: Pooling hängt nur von den Top k ab, nicht von der Listenlänge`, () => {
@@ -170,6 +192,21 @@ describe("Wandel-Ranking", () => {
     const baseline = splitBaseline(listsA, listsB, 3);
     expect(baseline).toBeGreaterThan(0.3); // gemischte Gruppen teilen Nachbarn
     expect(splitBaseline(listsA, [], 3)).toBeNaN();
+  });
+
+  it("splitNull: p klein bei getrennten Zeiträumen, 1 bei gleichen Listen", () => {
+    const listsA = [["a", "b", "c"], ["a", "b", "c"], ["a", "b", "c"]];
+    const listsB = [["x", "y", "z"], ["x", "y", "z"], ["x", "y", "z"]];
+    // k = 6: jede gemischte Gruppe enthält alle sechs Wörter (Überlappung 1);
+    // nur die echte Aufteilung und ihr Spiegel haben 0. C(6,3) = 20 → p = 3/21.
+    const sep = splitNull(listsA, listsB, 6, 0);
+    expect(sep.splits).toBe(20);
+    expect(sep.mean).toBeCloseTo(18 / 20);
+    expect(sep.mean).toBe(splitBaseline(listsA, listsB, 6));
+    expect(sep.p).toBeCloseTo(3 / 21);
+    const same = [["a", "b", "c"], ["a", "b", "c"]];
+    expect(splitNull(same, same, 3, 1).p).toBe(1);
+    expect(splitNull(listsA, listsB, 3, NaN).p).toBeNaN();
   });
 
   it("splitBaseline: Zufallsauswahl ist deterministisch", () => {

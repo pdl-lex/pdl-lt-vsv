@@ -348,10 +348,40 @@ export function splitBaseline(
   k: number,
   maxSplits: number = BASELINE_SPLITS,
 ): number {
+  return splitNull(listsA, listsB, k, NaN, maxSplits).mean;
+}
+
+export interface SplitNull {
+  /** Mittlere Überlappung über die Aufteilungen (= `splitBaseline`). */
+  mean: number;
+  /**
+   * Permutations-p-Wert, einseitig: Anteil der Aufteilungen, deren Überlappung
+   * höchstens so groß ist wie die beobachtete, als `(b + 1) / (m + 1)`
+   * (Phipson & Smyth 2010). Klein = A ↔ B liegt tiefer als fast jede zufällige
+   * Aufteilung. Die kleinste erreichbare Zahl hängt von der Zahl der
+   * Aufteilungen ab (bei 64: 1/65 ≈ 0,015; bei 3 + 3 Scheiben: 1/21 ≈ 0,048).
+   * `NaN`, wenn `observed` keine Zahl ist.
+   */
+  p: number;
+  /** Anzahl der ausgewerteten Aufteilungen. */
+  splits: number;
+}
+
+/**
+ * Nullverteilung zu `splitBaseline`: Mittelwert und p-Wert der beobachteten
+ * Überlappung `observed`. Gleiche Aufteilungen wie `splitBaseline`.
+ */
+export function splitNull(
+  listsA: readonly string[][],
+  listsB: readonly string[][],
+  k: number,
+  observed: number,
+  maxSplits: number = BASELINE_SPLITS,
+): SplitNull {
   const all = [...listsA, ...listsB];
   const n = all.length;
   const r = listsA.length;
-  if (r === 0 || listsB.length === 0) return NaN;
+  if (r === 0 || listsB.length === 0) return { mean: NaN, p: NaN, splits: 0 };
 
   // Labels → Ganzzahlen: hier wird bis zu BASELINE_SPLITS-mal gepoolt, das
   // muss ohne Map-Zugriffe und Vergleichsfunktionen auskommen.
@@ -413,10 +443,12 @@ export function splitBaseline(
 
   let sum = 0;
   let count = 0;
+  let atMost = 0;
   const add = (v: number) => {
     if (Number.isFinite(v)) {
       sum += v;
       count++;
+      if (v <= observed + 1e-9) atMost++;
     }
   };
   if (choose(n, r, maxSplits) <= maxSplits) {
@@ -433,8 +465,15 @@ export function splitBaseline(
       add(value(new Set(order.slice(0, r))));
     }
   }
-  return count > 0 ? sum / count : NaN;
+  return {
+    mean: count > 0 ? sum / count : NaN,
+    p: count > 0 && Number.isFinite(observed) ? (atMost + 1) / (count + 1) : NaN,
+    splits: count,
+  };
 }
+
+/** Wo ein Zielwort belegt ist: in beiden Zeiträumen, nur in einem oder in keinem. */
+export type ChangeCoverage = "beide" | "nur A" | "nur B" | "keine";
 
 export interface ChangeRow {
   entityId: string;
@@ -443,6 +482,14 @@ export interface ChangeRow {
   between: number;
   /** Erwartete Überlappung ohne Unterschied zwischen A und B (`splitBaseline`). */
   baseline: number;
+  /** Abstand zum Zufall: `baseline − between`. Sortierschlüssel des Rankings. */
+  gap: number;
+  /** Permutations-p-Wert von `between` (s. `SplitNull.p`). */
+  p: number;
+  /** Belege (Summe `freq`) je Zeitraum. */
+  freqA: number;
+  freqB: number;
+  coverage: ChangeCoverage;
   withinA: number;
   withinB: number;
   a: PooledList;
@@ -450,10 +497,28 @@ export interface ChangeRow {
   diff: NeighborDiff | null;
 }
 
+/** Summe der Belege (`freq`) eines Zielworts über einen Zeitraum. */
+function periodFreq(idx: IndexedBundle, entityId: string, period: Period): number {
+  let sum = 0;
+  for (const i of periodIndices(idx, period)) sum += Math.max(0, entityFreqAt(idx, entityId, i));
+  return sum;
+}
+
 /**
  * Wandel-Ranking nach Gonen et al.: je Zielwort die Überlappung der Nachbarn
- * zweier Zeiträume, aufsteigend sortiert (am stärksten verändert zuerst).
- * Wörter ohne Beleg in einem der Zeiträume stehen am Ende.
+ * zweier Zeiträume.
+ *
+ * Sortiert wird nach dem **Abstand zum Zufall** (`baseline − between`),
+ * absteigend, nicht nach der rohen Überlappung. Dünn belegte Wörter haben
+ * schon innerhalb eines Zeitraums instabile Listen und damit eine niedrige
+ * Überlappung, ohne dass sich etwas verschoben hätte; nach der rohen
+ * Überlappung stünden sie oben. Die Baseline poolt gleich viele Scheiben wie
+ * A ↔ B und rechnet diese Belegungsabhängigkeit heraus. Gleichstand: kleinere
+ * Überlappung zuerst.
+ *
+ * Wörter, die nur in einem Zeitraum belegt sind (`coverage` „nur A"/„nur B"),
+ * haben keine Überlappung; sie folgen nach Belegen absteigend, zuerst „nur B"
+ * (neu aufgekommen), dann „nur A", dann „keine".
  */
 export function buildChangeRanking(
   idx: IndexedBundle,
@@ -463,18 +528,27 @@ export function buildChangeRanking(
   k: number,
 ): ChangeRow[] {
   const kk = effectiveK(idx, k);
+  const labelOf = new Map(idx.tracks.map((t) => [t.entity.id, t.entity.label ?? t.entity.id]));
   const rows = entityIds.map((entityId): ChangeRow => {
-    const track = idx.tracks.find((t) => t.entity.id === entityId);
     const listsA = periodLists(idx, entityId, periodA, kk);
     const listsB = periodLists(idx, entityId, periodB, kk);
     const a: PooledList = { labels: pooledFrom(listsA, kk), used: listsA.length, total: periodIndices(idx, periodA).length };
     const b: PooledList = { labels: pooledFrom(listsB, kk), used: listsB.length, total: periodIndices(idx, periodB).length };
     const diff = a.labels.length > 0 && b.labels.length > 0 ? diffLists(a.labels, b.labels, kk) : null;
+    const between = diff ? diffOverlap(diff) : NaN;
+    const nul = diff ? splitNull(listsA, listsB, kk, between) : { mean: NaN, p: NaN };
+    const coverage: ChangeCoverage =
+      a.used > 0 && b.used > 0 ? "beide" : b.used > 0 ? "nur B" : a.used > 0 ? "nur A" : "keine";
     return {
       entityId,
-      label: track?.entity.label ?? entityId,
-      between: diff ? diffOverlap(diff) : NaN,
-      baseline: diff ? splitBaseline(listsA, listsB, kk) : NaN,
+      label: labelOf.get(entityId) ?? entityId,
+      between,
+      baseline: nul.mean,
+      gap: nul.mean - between,
+      p: nul.p,
+      freqA: periodFreq(idx, entityId, periodA),
+      freqB: periodFreq(idx, entityId, periodB),
+      coverage,
       withinA: withinOverlap(idx, entityId, periodA, kk),
       withinB: withinOverlap(idx, entityId, periodB, kk),
       a,
@@ -482,10 +556,44 @@ export function buildChangeRanking(
       diff,
     };
   });
+  const groupOrder: Record<ChangeCoverage, number> = { beide: 0, "nur B": 1, "nur A": 2, keine: 3 };
   return rows.sort((x, y) => {
-    const fx = Number.isFinite(x.between);
-    const fy = Number.isFinite(y.between);
+    const fx = Number.isFinite(x.gap);
+    const fy = Number.isFinite(y.gap);
     if (fx !== fy) return fx ? -1 : 1;
-    return fx ? x.between - y.between : 0;
+    if (fx) return y.gap - x.gap || x.between - y.between;
+    return groupOrder[x.coverage] - groupOrder[y.coverage] || y.freqA + y.freqB - (x.freqA + x.freqB);
   });
+}
+
+/** Ein CSV-Feld: Zahlen mit Punkt (4 Nachkommastellen), Text bei Bedarf in Anführungszeichen. */
+function csvCell(v: string | number): string {
+  if (typeof v === "number") return Number.isFinite(v) ? String(Math.round(v * 10000) / 10000) : "";
+  return /[",\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+}
+
+/**
+ * Das Ranking als CSV, eine Zeile je Zielwort in der Reihenfolge der Tabelle.
+ * `rank` nur für Wörter mit Überlappung. Zeiträume und k stehen in jeder
+ * Zeile, damit die Datei ohne die Ansicht lesbar bleibt.
+ */
+export function changeRankingCsv(
+  rows: readonly ChangeRow[],
+  ctx: { periodA: string; periodB: string; k: number },
+): string {
+  const head = [
+    "rank", "entity_id", "label", "coverage", "overlap", "baseline", "gap", "p",
+    "within_a", "within_b", "slices_a_used", "slices_a_total", "slices_b_used", "slices_b_total",
+    "freq_a", "freq_b", "period_a", "period_b", "k",
+  ];
+  let rank = 0;
+  const lines = rows.map((r) =>
+    [
+      Number.isFinite(r.between) ? String(++rank) : "",
+      r.entityId, r.label, r.coverage, r.between, r.baseline, r.gap, r.p,
+      r.withinA, r.withinB, r.a.used, r.a.total, r.b.used, r.b.total,
+      r.freqA, r.freqB, ctx.periodA, ctx.periodB, ctx.k,
+    ].map(csvCell).join(","),
+  );
+  return [head.join(","), ...lines].join("\n") + "\n";
 }
