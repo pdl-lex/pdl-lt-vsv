@@ -66,7 +66,10 @@ ist nicht die Architektur, sondern die Zell-Sparsity (siehe unten).
 ```
 
 - `vector`: der volle Vektor im **gemeinsamen** Raum. Ermöglicht Re-Projektion
-  auf gefilterte Wortauswahlen im Frontend/Backend.
+  auf gefilterte Wortauswahlen im Frontend/Backend. Auf Länge 1 normiert: Die
+  Länge eines Rohvektors spiegelt vor allem die Textmenge der Zelle und trägt
+  keine Bedeutung; diese Information steckt nur in `freq`. Module rechnen mit
+  Richtungen (Kosinus) oder normieren selbst, bevor sie Vektoren mitteln.
 - `coords_3d`: vom Lieferanten vorberechnete gemeinsame PCA – **ein** Basisraum
   für alle Punkte (Aggregate, Records, Anker, übrige Kontextwörter).
   Alignment-frei, weil ein einziger Raum. Gefittet wird auf einer festen
