@@ -262,6 +262,30 @@ function AnchorListCard({ catalog }: { catalog: CatalogWord[] }) {
 
   const anchors = indexed?.anchors ?? [];
   const clusters = indexed?.clusters ?? [];
+  const space = useNeighborFilters((s) => s.space);
+  const filterValues = useNeighborFilters((s) => s.values);
+  // Zahlen je Anker aus dem Suchraum: alle Filter vom Typ `minimum` (z. B. Mindestbelegung),
+  // nachgeschlagen über das Lemma. Kandidaten mit eigener Zeitscheibe (SGNS) zählen nicht.
+  const counts = useMemo(() => {
+    if (!space) return null;
+    const cols = space.filters.filter((f) => f.type === "minimum");
+    const pos = new Map<string, number>();
+    space.candidates.lemma.forEach((l, i) => {
+      if (space.candidates.slice?.[i] == null && !pos.has(l)) pos.set(l, i);
+    });
+    return { cols, pos, attrs: space.candidates.attributes };
+  }, [space]);
+  const countCols: CountCol[] = (counts?.cols ?? []).map((f) => {
+    const t = filterValues[f.column];
+    return { column: f.column, label: f.label, threshold: typeof t === "number" ? t : null };
+  });
+  const countsOf = (a: Anchor): (number | null)[] => {
+    const i = counts?.pos.get(anchorKey(a));
+    return countCols.map((c) => {
+      const v = i == null ? undefined : counts?.attrs[c.column]?.[i];
+      return typeof v === "number" ? v : null;
+    });
+  };
   const shippedKeys = useMemo(() => new Set((indexed?.bundle.anchors ?? []).map(anchorKey)), [indexed?.bundle]);
   const rows = useMemo(() => {
     const q = filter.trim().toLowerCase();
@@ -325,6 +349,9 @@ function AnchorListCard({ catalog }: { catalog: CatalogWord[] }) {
                 <th>Lemma</th>
                 <th>Label</th>
                 <th>Cluster</th>
+                {countCols.map((c) => (
+                  <th key={c.column} className="tbl__num">{c.label}</th>
+                ))}
                 <th aria-label="entfernen" />
               </tr>
             </thead>
@@ -335,6 +362,8 @@ function AnchorListCard({ catalog }: { catalog: CatalogWord[] }) {
                   anchor={a}
                   color={clusterColor(Math.max(0, clusters.indexOf(a.cluster)), mode)}
                   added={!shippedKeys.has(anchorKey(a))}
+                  countCols={countCols}
+                  counts={countsOf(a)}
                 />
               ))}
             </tbody>
@@ -372,12 +401,29 @@ function AnchorListCard({ catalog }: { catalog: CatalogWord[] }) {
         verwirft). Import ersetzt die Liste: Tabulator-, Semikolon- oder Komma-getrennt mit den
         Spalten <code>lemma</code>, <code>label</code>, <code>cluster</code>; Label und Cluster
         dürfen fehlen. Die Positionen kommen aus dem Bundle. Fett: nicht im Bundle.
+        {countCols.length > 0 &&
+          " Die Zahlen stammen aus dem Suchraum der Nachbarn; grau: unter der Schwelle, die im Modul „Filter für nächste Nachbarn“ gerade aktiv ist."}
       </p>
     </section>
   );
 }
 
-function AnchorRowView({ anchor, color, added }: { anchor: Anchor; color: string; added: boolean }) {
+/** Zahlenspalte der Ankerliste: ein Filter vom Typ `minimum` mit seiner aktiven Schwelle (`null` = aus). */
+interface CountCol {
+  column: string;
+  label: string;
+  threshold: number | null;
+}
+
+function AnchorRowView({
+  anchor, color, added, countCols, counts,
+}: {
+  anchor: Anchor;
+  color: string;
+  added: boolean;
+  countCols: CountCol[];
+  counts: (number | null)[];
+}) {
   const key = anchorKey(anchor);
   const [error, setError] = useState<string | null>(null);
   const report = (err: string | null) => {
@@ -408,6 +454,25 @@ function AnchorRowView({ anchor, color, added }: { anchor: Anchor; color: string
             />
           </span>
         </td>
+        {countCols.map((c, j) => {
+          const v = counts[j];
+          const below = v != null && c.threshold != null && v < c.threshold;
+          return (
+            <td
+              key={c.column}
+              className={`tbl__num lt-mono${below || v == null ? " tbl__muted" : ""}`}
+              title={
+                v == null
+                  ? "nicht im Suchraum"
+                  : below
+                    ? `unter der aktiven Schwelle (≥ ${c.threshold})`
+                    : undefined
+              }
+            >
+              {v == null ? "–" : v.toLocaleString("de-DE")}
+            </td>
+          );
+        })}
         <td className="tbl__num">
           <button
             type="button"
@@ -422,7 +487,7 @@ function AnchorRowView({ anchor, color, added }: { anchor: Anchor; color: string
       </tr>
       {error && (
         <tr>
-          <td colSpan={4} className="picker__error">{error}</td>
+          <td colSpan={4 + countCols.length} className="picker__error">{error}</td>
         </tr>
       )}
     </>
