@@ -4,11 +4,13 @@
  * Gruppierungshinweis. Kleine, halbtransparente Punkte, damit die Zielwörter
  * davor dominieren.
  */
+import { useMemo } from "react";
 import { Html } from "@react-three/drei";
 import type { IndexedBundle } from "../data/model";
 import { toWorld } from "../data/model";
 import { clusterColor, INK, type Mode } from "./theme";
-import { useViz } from "../state/store";
+import { useVizPick } from "../state/store";
+import { anchorsOfShownTargets } from "../state/anchors";
 
 interface Props {
   idx: IndexedBundle;
@@ -19,7 +21,17 @@ interface Props {
 
 export function Anchors({ idx, mode, highlighted }: Props) {
   const clusterIndex = new Map(idx.clusters.map((c, i) => [c, i]));
-  const hiddenClusters = useViz((s) => s.hiddenClusters);
+  const { hiddenClusters, hideTargetAnchors, selectedEntityIds } = useVizPick(
+    "hiddenClusters", "hideTargetAnchors", "selectedEntityIds",
+  );
+  // Anker, die gerade auch als Trajektorie zu sehen sind (nur die Auswahl zählt).
+  const targetAnchors = useMemo(
+    () =>
+      hideTargetAnchors
+        ? anchorsOfShownTargets(idx.anchors, idx.tracks.map((t) => t.entity), selectedEntityIds)
+        : new Set<string>(),
+    [hideTargetAnchors, idx.anchors, idx.tracks, selectedEntityIds],
+  );
 
   return (
     <group>
@@ -28,7 +40,8 @@ export function Anchors({ idx, mode, highlighted }: Props) {
         const ci = clusterIndex.get(a.cluster) ?? 0;
         const color = clusterColor(ci, mode);
         const isHi = highlighted?.has(a.label) ?? false;
-        if (!isHi && hiddenClusters.has(a.cluster)) return null;
+        // Als NN hervorgehobene Anker bleiben stehen, sonst fehlte ein Teil der Nachbarliste im Bild.
+        if (!isHi && (hiddenClusters.has(a.cluster) || targetAnchors.has(a.label))) return null;
         return (
           <group key={`${a.label}-${i}`} position={pos}>
             <mesh>

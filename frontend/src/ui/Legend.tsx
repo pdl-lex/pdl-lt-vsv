@@ -67,12 +67,26 @@ export function TargetWords() {
 }
 
 export function AnchorClusters() {
-  const { indexed, hiddenClusters, toggleCluster } = useVizPick("indexed", "hiddenClusters", "toggleCluster");
+  const { indexed, hiddenClusters, toggleCluster, hideTargetAnchors, setHideTargetAnchors } = useVizPick(
+    "indexed", "hiddenClusters", "toggleCluster", "hideTargetAnchors", "setHideTargetAnchors",
+  );
   const mode = useMode();
   if (!indexed || indexed.clusters.length === 0) return null;
 
   return (
     <div className="clusters">
+      <label
+        className="clusters__row"
+        title="Gilt nur für die eingeblendeten Trajektorien, nicht für alle Zielwörter des Bundles. Als Nachbar hervorgehobene Anker bleiben sichtbar."
+      >
+        <input
+          type="checkbox"
+          className="words__check"
+          checked={hideTargetAnchors}
+          onChange={(e) => setHideTargetAnchors(e.target.checked)}
+        />
+        <span className="clusters__label">Anker ausblenden, die eingeblendete Zielwörter sind</span>
+      </label>
       {indexed.clusters.map((c, i) => {
         const shown = !hiddenClusters.has(c);
         return (

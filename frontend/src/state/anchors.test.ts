@@ -23,6 +23,7 @@ import {
   anchorDiff,
   anchorFileText,
   anchorFromWord,
+  anchorsOfShownTargets,
   parseAnchorText,
   resolveAnchorRows,
   searchCatalog,
@@ -120,6 +121,33 @@ describe("Liste, Unterschied, Import/Export", () => {
       { label: "Einsatzkräfte", cluster: "MILITÄR", lemma: "Einsatzkräft", coords_3d: [1, 2, 3] },
     ]);
     expect(missing).toEqual(["Panzer", "Unbekannt"]);
+  });
+});
+
+describe("anchorsOfShownTargets", () => {
+  const anchors: Anchor[] = [
+    ...SHIPPED,
+    { label: "Drohne", cluster: "MILITÄR", lemma: "Drohne", coords_3d: [4, 5, 6] },
+  ];
+  const entities = [
+    { id: "einsatzkraeft", label: "Einsatzkräft" }, // über das Anker-Lemma
+    { id: "panne", label: "Panne" }, // Anker ohne Lemma: über das Label
+    { id: "drohne", label: "Drohne" },
+  ];
+
+  it("blendet nur Anker der eingeblendeten Zielwörter aus, nicht aller Zielwörter", () => {
+    expect(anchorsOfShownTargets(anchors, entities, new Set(["einsatzkraeft", "panne"]))).toEqual(
+      new Set(["Einsatzkräfte", "Panne"]),
+    );
+    expect(anchorsOfShownTargets(anchors, entities, new Set(["drohne"]))).toEqual(new Set(["Drohne"]));
+  });
+
+  it("ohne Auswahl bleiben alle Anker", () => {
+    expect(anchorsOfShownTargets(anchors, entities, new Set())).toEqual(new Set());
+  });
+
+  it("Zielwort ohne Label wird über seine ID zugeordnet", () => {
+    expect(anchorsOfShownTargets(anchors, [{ id: "Panne" }], new Set(["Panne"]))).toEqual(new Set(["Panne"]));
   });
 });
 

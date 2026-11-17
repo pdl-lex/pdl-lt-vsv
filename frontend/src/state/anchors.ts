@@ -92,6 +92,33 @@ export function searchCatalog(catalog: CatalogWord[], query: string, limit: numb
     .map((x) => x.w);
 }
 
+/**
+ * Labels der Anker, die zugleich ein **eingeblendetes** Zielwort sind. Ein Wort
+ * als Anker-Punkt und als Trajektorie zugleich zu zeigen verwirrt; deshalb kann
+ * der Wortraum diese Anker ausblenden.
+ *
+ * Maßgeblich ist die aktuelle Auswahl, nicht die Zielwortliste des Bundles: bei
+ * einer langen Zielwortliste (z.B. 600 Wörter) ist fast jeder Anker irgendwo
+ * Zielwort, und ein Ausschluss gegen die ganze Liste ließe keinen übrig.
+ * Zugeordnet wird über das Lemma des Ankers (ohne Lemma das Label) und über das
+ * Anker-Label, jeweils gegen das Label des Zielworts (in der Pipeline das Lemma),
+ * ohne Label gegen seine ID.
+ */
+export function anchorsOfShownTargets(
+  anchors: Anchor[],
+  entities: { id: string; label?: string }[],
+  selected: ReadonlySet<string>,
+): Set<string> {
+  const shown = new Set<string>();
+  for (const e of entities) if (selected.has(e.id)) shown.add(e.label ?? e.id);
+  const out = new Set<string>();
+  if (shown.size === 0) return out;
+  for (const a of anchors) {
+    if (shown.has(anchorKey(a)) || shown.has(a.label)) out.add(a.label);
+  }
+  return out;
+}
+
 /** Anker aus einem Wort des Bestands; Label und Cluster wie im Bundle, sonst Lemma und `_`. */
 export function anchorFromWord(w: CatalogWord, label?: string, cluster?: string): Anchor {
   return {

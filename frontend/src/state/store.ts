@@ -49,6 +49,11 @@ interface VizState {
    * bleiben trotzdem sichtbar, sonst fehlte ein Teil der Nachbarliste im Bild. */
   hiddenClusters: Set<string>;
 
+  /** Anker ausblenden, die zugleich ein eingeblendetes Zielwort sind (s.
+   * `anchorsOfShownTargets`). Gilt nur für die aktuelle Auswahl, nicht für alle
+   * Zielwörter des Bundles. Bleibt beim Wechsel des Bundles erhalten. */
+  hideTargetAnchors: boolean;
+
   // Facetten
   viewMode: ViewMode;
   /** Aktive Facetten-Filter: facetId → Menge erlaubter Wert-IDs (leer = alle). */
@@ -66,6 +71,7 @@ interface VizState {
   setAllEntities: (selected: boolean) => void;
   setNeighborK: (k: number) => void;
   toggleCluster: (cluster: string) => void;
+  setHideTargetAnchors: (hide: boolean) => void;
   setViewMode: (mode: ViewMode) => void;
   toggleFacetValue: (facetId: string, valueId: string) => void;
   clearFacet: (facetId: string) => void;
@@ -111,6 +117,7 @@ export const useViz = create<VizState>((set, get) => ({
   activeEntityId: null,
   neighborK: NEIGHBOR_K_DEFAULT,
   hiddenClusters: new Set(),
+  hideTargetAnchors: true,
   viewMode: "aggregat",
   facetFilters: {},
 
@@ -147,6 +154,7 @@ export const useViz = create<VizState>((set, get) => ({
       else next.add(cluster);
       return { hiddenClusters: next };
     }),
+  setHideTargetAnchors: (hide) => set({ hideTargetAnchors: hide }),
   toggleEntity: (id) =>
     set((s) => {
       const next = new Set(s.selectedEntityIds);

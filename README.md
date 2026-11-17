@@ -46,6 +46,11 @@ Bundle wird einmal geladen und von allen Modulen geteilt — ein Modulwechsel ve
 
 - **3D-Punktwolke** (react-three-fiber): Anker als beschriftete Landmarken,
   Zielwörter als bewegte Punkte, Kamera-Navigation.
+- **Anker, die Zielwörter sind**, werden ausgeblendet (Schalter unter
+  „Anker-Cluster“, voreingestellt an), aber nur für die gerade eingeblendeten
+  Trajektorien, nicht für alle Zielwörter des Bundles. Bei langen
+  Zielwortlisten wäre sonst kaum ein Anker übrig. Zugeordnet wird über das
+  Lemma. Als Nachbar hervorgehobene Anker bleiben sichtbar.
 - **Zeitachse**: kontinuierlicher Slider mit Interpolation und Abspiel-Button.
 - **Trajektorien** je Zielwort mit Lücken-Behandlung (leere `freq==0`-Zellen
   unterbrechen den Pfad statt Bewegung zu erfinden).
